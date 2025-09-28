@@ -1,0 +1,367 @@
+/* 기본 폰트 크기 및 가독성 개선 */
+.reveal {
+    font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-size: 24px;
+    line-height: 1.4;
+}
+
+.reveal .slides {
+    text-align: left;
+    width: 95%;
+    max-width: 1400px;
+}
+
+.reveal .slides section:first-child {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100vh;
+}
+
+.reveal h1 {
+    font-size: 2.2em;
+    text-align: center;
+    color: #2a5599;
+    margin-bottom: 0.3em;
+    text-transform: none !important;
+    font-variant: normal !important;
+}
+
+.reveal h2 {
+    font-size: 1.6em;
+    color: #2a5599;
+    margin-bottom: 0.3em;
+    border-bottom: 2px solid #2a5599;
+    padding-bottom: 0.1em;
+    text-transform: none !important;
+    font-variant: normal !important;
+}
+
+.reveal h3 {
+    font-size: 1.2em;
+    color: #5577aa;
+    margin-bottom: 0.25em;
+    text-transform: none !important;
+    font-variant: normal !important;
+}
+
+.reveal p, .reveal li {
+    font-size: 0.85em;
+    line-height: 1.4;
+    margin-bottom: 0.3em;
+}
+
+.reveal pre code {
+    max-height: 700px;
+    font-size: 1.7em;
+    line-height: 1.4;
+    padding: 0.7em;
+    border-radius: 6px;
+    overflow-y: auto;
+}
+
+.reveal blockquote {
+    background: #f8f9fa;
+    border-left: 3px solid #2a5599;
+    padding: 0.7em;
+    margin: 0.7em 0;
+    font-style: italic;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.9em;
+}
+
+/* 리스트 및 추가 요소들 스타일 최적화 */
+.reveal ul, .reveal ol {
+    margin: 0.4em 0;
+    padding-left: 1.2em;
+}
+
+.reveal ul li, .reveal ol li {
+    margin-bottom: 0.2em;
+    line-height: 1.3;
+}
+
+.reveal ul ul, .reveal ol ol, .reveal ul ol, .reveal ol ul {
+    margin: 0.2em 0;
+    padding-left: 1em;
+}
+
+.reveal table {
+    font-size: 0.8em;
+    margin: 0.5em 0;
+}
+
+.reveal table th, .reveal table td {
+    padding: 0.3em 0.5em;
+    line-height: 1.2;
+}
+
+/* 2단 레이아웃 최적화 */
+.two-column {
+    display: flex;
+    gap: 1.5em;
+    align-items: flex-start;
+}
+
+.column-left, .column-right {
+    flex: 1;
+}
+
+.column-left pre, .column-right pre {
+    margin: 0.3em 0;
+}
+
+/* 코드 블록 내 폰트 크기 더 세밀하게 조정 */
+.reveal .two-column pre code {
+    font-size: 1.6em;
+    line-height: 1.3;
+    padding: 0.5em;
+}
+
+/* 인라인 코드 폰트 크기 조정 */
+.reveal code {
+    font-size: 1.7em;
+}
+
+/* 슬라이드 여백 최적화 */
+.reveal .slides section {
+    padding: 1em 0;
+}
+
+.reveal .slides section.present {
+    padding: 0.5em 0;
+}
+
+/* 메인 페이지 스타일 */
+.main-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.header h1 {
+    color: #2a5599;
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+.header p {
+    font-size: 1.2rem;
+    color: #666;
+    margin-bottom: 2rem;
+}
+
+.theme-selector {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.theme-selector label {
+    font-weight: 600;
+    color: #333;
+    margin-right: 1rem;
+}
+
+.theme-selector select {
+    padding: 8px 16px;
+    border: 2px solid #2a5599;
+    border-radius: 8px;
+    font-size: 16px;
+    background: white;
+    color: #2a5599;
+    cursor: pointer;
+}
+
+.lectures-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.lecture-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    padding: 2rem;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.lecture-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(42, 85, 153, 0.15);
+    border-color: #2a5599;
+}
+
+.lecture-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #2a5599, #5577aa);
+}
+
+.lecture-card h3 {
+    color: #2a5599;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.lecture-card .week-number {
+    font-size: 0.9rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+}
+
+.lecture-card .description {
+    color: #666;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.lecture-card .actions {
+    display: flex;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.view-link {
+    background: #007bff;
+    color: white;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    flex: 1;
+    text-align: center;
+}
+
+.view-link:hover {
+    background: #0056b3;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.pdf-button {
+    background: #28a745;
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.pdf-button:hover {
+    background: #218838;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.pdf-button:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.footer {
+    text-align: center;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid #dee2e6;
+    color: #666;
+}
+
+/* Custom 테마는 외부 CSS 파일에서 로드됩니다 */
+
+/* 숨김 클래스 */
+.hidden {
+    display: none !important;
+}
+
+/* 통계 정보 스타일 */
+.stats {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    color: #495057;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 상태 표시기 스타일 */
+.status-indicators {
+    display: flex;
+    gap: 0.5rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+}
+
+.status-indicator {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.status-indicator.slides {
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #bbdefb;
+}
+
+.status-indicator.code {
+    background: #e8f5e8;
+    color: #2e7d32;
+    border: 1px solid #c8e6c9;
+}
+
+.status-indicator.images {
+    background: #fff3e0;
+    color: #ef6c00;
+    border: 1px solid #ffcc02;
+}
+
+.status-indicator.none {
+    background: #f5f5f5;
+    color: #757575;
+    border: 1px solid #e0e0e0;
+}

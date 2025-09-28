@@ -1,0 +1,282 @@
+/**
+ * Custom Enhancement for White Theme
+ * Enhanced white theme with improved readability and visual hierarchy
+ */
+
+/* Import Korean fonts for PDF compatibility */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+/* Fallback fonts for offline use */
+@font-face {
+  font-family: 'NotoSansKR-Fallback';
+  src: local('Noto Sans KR'), local('NotoSansKR'), local('Malgun Gothic'), local('MalgunGothic'), local('맑은 고딕');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* Global font family for Korean support */
+.theme-custom .reveal {
+    font-family: 'Noto Sans KR', 'NotoSansKR-Fallback', 'Malgun Gothic', 'MalgunGothic', '맑은 고딕', sans-serif !important;
+}
+
+.theme-custom .reveal h1,
+.theme-custom .reveal h2,
+.theme-custom .reveal h3,
+.theme-custom .reveal h4,
+.theme-custom .reveal h5,
+.theme-custom .reveal h6 {
+    font-family: 'Noto Sans KR', 'NotoSansKR-Fallback', 'Malgun Gothic', 'MalgunGothic', '맑은 고딕', sans-serif !important;
+}
+
+.theme-custom .reveal p,
+.theme-custom .reveal li,
+.theme-custom .reveal td,
+.theme-custom .reveal th {
+    font-family: 'Noto Sans KR', 'NotoSansKR-Fallback', 'Malgun Gothic', 'MalgunGothic', '맑은 고딕', sans-serif !important;
+}
+
+/* Enhanced code blocks */
+.theme-custom .reveal pre code {
+    background: #2d3748 !important;
+    color: #e2e8f0 !important;
+    border: 1px solid #4a5568;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    font-family: 'Noto Sans KR', 'NotoSansKR-Fallback', 'Consolas', 'Monaco', 'Courier New', monospace !important;
+    font-size: 1.1em !important;
+    line-height: 1.6 !important;
+    padding: 1.5rem !important;
+}
+
+.theme-custom .reveal code {
+    font-family: 'Noto Sans KR', 'NotoSansKR-Fallback', 'Consolas', 'Monaco', 'Courier New', monospace !important;
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+    padding: 0.2em 0.4em !important;
+    border-radius: 4px !important;
+    font-size: 0.9em !important;
+}
+
+/* Syntax highlighting improvements */
+.theme-custom .reveal pre code .hljs-comment {
+    color: #a0aec0 !important;
+    font-style: italic;
+}
+
+.theme-custom .reveal pre code .hljs-keyword {
+    color: #81c784 !important;
+    font-weight: bold;
+}
+
+.theme-custom .reveal pre code .hljs-string {
+    color: #ffb74d !important;
+}
+
+.theme-custom .reveal pre code .hljs-number {
+    color: #4fc3f7 !important;
+}
+
+.theme-custom .reveal pre code .hljs-function {
+    color: #ba68c8 !important;
+}
+
+.theme-custom .reveal pre code .hljs-type {
+    color: #4db6ac !important;
+    font-weight: bold;
+}
+
+.theme-custom .reveal pre code .hljs-preprocessor {
+    color: #ff8a65 !important;
+}
+
+/* Enhanced blockquotes */
+.theme-custom .reveal blockquote {
+    background: #f8f9fa;
+    border-left: 4px solid #007bff;
+    border-radius: 0 8px 8px 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    font-style: italic;
+}
+
+/* Enhanced headings */
+.theme-custom .reveal h1 {
+    color: #1a365d;
+    border-bottom: 3px solid #007bff;
+    padding-bottom: 0.2em;
+}
+
+.theme-custom .reveal h2 {
+    color: #2a5599;
+    border-bottom: 2px solid #007bff;
+}
+
+.theme-custom .reveal h3 {
+    color: #4a6fa5;
+}
+
+/* Enhanced links */
+.theme-custom .reveal a {
+    color: #007bff;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.theme-custom .reveal a:hover {
+    color: #0056b3;
+    border-bottom-color: #0056b3;
+}
+
+/* Enhanced tables */
+.theme-custom .reveal table {
+    border-collapse: collapse;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.theme-custom .reveal table th {
+    background: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.theme-custom .reveal table td {
+    border-bottom: 1px solid #dee2e6;
+}
+
+.theme-custom .reveal table tr:hover {
+    background: #f8f9fa;
+}
+
+/* Enhanced strong/bold text */
+.theme-custom .reveal strong,
+.theme-custom .reveal b {
+    color: #1a365d;
+    font-weight: 700;
+}
+
+/* Enhanced list markers */
+.theme-custom .reveal ul li::marker {
+    color: #007bff;
+}
+
+.theme-custom .reveal ol li::marker {
+    color: #007bff;
+    font-weight: 600;
+}
+
+/* Enhanced progress bar */
+.theme-custom .reveal .progress span {
+    background: linear-gradient(90deg, #007bff, #0056b3);
+}
+
+/* Enhanced two-column layout */
+.theme-custom .two-column {
+    gap: 2rem;
+}
+
+.theme-custom .two-column .column-left,
+.theme-custom .two-column .column-right {
+    background: #fdfdfd;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* Enhanced drawing toolbar */
+.theme-custom #drawing-toolbar {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #dee2e6;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    backdrop-filter: blur(10px);
+}
+
+.theme-custom #drawing-toolbar button {
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+
+.theme-custom #drawing-toolbar button:hover {
+    background: #f8f9fa;
+    border-color: #007bff;
+}
+
+/* Enhanced back button */
+.theme-custom .back-to-main {
+    background: rgba(0, 123, 255, 0.9) !important;
+    color: #ffffff !important;
+    border: 1px solid #007bff;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.theme-custom .back-to-main:hover {
+    background: rgba(0, 86, 179, 1) !important;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4) !important;
+}
+
+/* Enhanced focus states */
+.theme-custom .reveal *:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* Subtle background pattern */
+.theme-custom {
+    background: #ffffff;
+    background-image:
+        radial-gradient(circle at 25% 25%, #f8f9fa 1px, transparent 1px),
+        radial-gradient(circle at 75% 75%, #f8f9fa 1px, transparent 1px);
+    background-size: 50px 50px;
+}
+
+/* Enhanced slide transitions */
+.theme-custom .reveal .slides section {
+    transition: all 0.3s ease;
+}
+
+.theme-custom .reveal .slides section.present {
+    transform: scale(1);
+}
+
+.theme-custom .reveal .slides section.past,
+.theme-custom .reveal .slides section.future {
+    transform: scale(0.95);
+    opacity: 0.7;
+}
+
+/* PDF-specific styling for better readability */
+@media print {
+    .theme-custom .reveal .slides section {
+        padding: 40px 60px !important;
+        box-sizing: border-box !important;
+    }
+
+    .theme-custom .reveal h1,
+    .theme-custom .reveal h2,
+    .theme-custom .reveal h3,
+    .theme-custom .reveal h4,
+    .theme-custom .reveal h5,
+    .theme-custom .reveal h6 {
+        margin-bottom: 1em !important;
+    }
+
+    .theme-custom .reveal p,
+    .theme-custom .reveal ul,
+    .theme-custom .reveal ol {
+        margin-bottom: 1em !important;
+    }
+
+    .theme-custom .reveal pre {
+        margin: 1.5em 0 !important;
+    }
+
+    .theme-custom .reveal blockquote {
+        margin: 1.5em 0 !important;
+    }
+
+    .theme-custom .two-column .column-left,
+    .theme-custom .two-column .column-right {
+        padding: 1.5rem !important;
+    }
+}

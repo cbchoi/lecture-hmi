@@ -1,0 +1,23 @@
+{
+  "name": "lecture-sysprog-reveal",
+  "version": "1.0.0",
+  "description": "System Programming Lecture Slides with Reveal.js and Vite",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config config/vite.config.ts",
+    "build": "vite build --config config/vite.config.ts",
+    "preview": "vite preview --config config/vite.config.ts",
+    "export-pdf": "node scripts/export-pdf.mjs",
+    "server": "node config/server.js",
+    "start": "npm run build && npm run server"
+  },
+  "dependencies": {
+    "reveal.js": "^5.0.4",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "vite": "^5.1.4",
+    "puppeteer": "^22.1.0",
+    "commander": "^12.0.0"
+  }
+}
