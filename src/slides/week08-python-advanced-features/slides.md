@@ -8,48 +8,146 @@
 
 ---
 
-## 커스텀 위젯 개발
+## 1️⃣ 이론 강의 (45분)
+### 📚 **고급 UI 패턴 및 아키텍처 설계**
 
-### 🎨 커스텀 위젯의 필요성
+#### **1.1 커스텀 위젯 개발 이론**
+
+<div class="concept-explanation">
+
+**🎨 커스텀 위젯의 필요성**:
 - **표준 위젯 한계**: 산업용 HMI 요구사항에 부족한 기본 컴포넌트
 - **브랜딩 일관성**: 회사/제품 고유의 디자인 언어 구현
 - **특수 기능**: 반도체 장비 특화 인터페이스 요소
 - **성능 최적화**: 특정 용도에 최적화된 렌더링
 
-### 🏗️ 위젯 개발 패턴
+**🏗️ 위젯 개발 패턴**:
 1. **Composition Pattern**: 기존 위젯 조합
 2. **Inheritance Pattern**: QWidget 직접 상속
 3. **Custom Painting**: QPainter 활용 완전 커스텀
 4. **Hybrid Approach**: 혼합 방식
 
----
+</div>
 
-## QPainter 기반 산업용 게이지
-
-### 핵심 구현 예제
+##### **1.1.1 QPainter 고급 활용**
 
 ```python
+from PySide6.QtWidgets import QWidget
+from PySide6.QtGui import QPainter, QPen, QBrush, QLinearGradient, QConicalGradient
+from PySide6.QtCore import Qt, QRect, QPoint
+import math
+
 class IndustrialGauge(QWidget):
     """산업용 계기판 위젯"""
 
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMinimumSize(200, 200)
+
+        # 게이지 속성
+        self.value = 0
+        self.min_value = 0
+        self.max_value = 100
+        self.warning_threshold = 80
+        self.critical_threshold = 95
+
+        # 색상 정의
+        self.colors = {
+            'normal': Qt.green,
+            'warning': Qt.yellow,
+            'critical': Qt.red,
+            'background': Qt.darkGray,
+            'text': Qt.white
+        }
+
     def paintEvent(self, event):
+        """커스텀 페인팅"""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        # 배경, 눈금, 바늘 순서로 그리기
-        self.draw_background(painter)
-        self.draw_scale(painter)
-        self.draw_needle(painter)
-```
+        # 위젯 크기 계산
+        rect = self.rect()
+        center = rect.center()
+        radius = min(rect.width(), rect.height()) // 2 - 10
 
-### 주요 기능
-- **실시간 데이터 반영**: 센서값에 따른 바늘 위치 변경
-- **임계값 표시**: 경고/위험 영역 색상 구분
-- **부드러운 애니메이션**: QPropertyAnimation 활용
+        # 배경 그리기
+        self.draw_background(painter, center, radius)
 
----
+        # 눈금 그리기
+        self.draw_scale(painter, center, radius)
 
-## 3D 시각화 및 OpenGL 통합
+        # 값 표시 바늘 그리기
+        self.draw_needle(painter, center, radius)
+
+        # 텍스트 표시
+        self.draw_text(painter, rect)
+
+    def draw_background(self, painter, center, radius):
+        """배경 그리기"""
+        # 외곽 원
+        painter.setPen(QPen(Qt.white, 3))
+
+        # 그라디언트 배경
+        gradient = QConicalGradient(center, 0)
+        gradient.setColorAt(0.0, Qt.darkBlue)
+        gradient.setColorAt(0.3, Qt.blue)
+        gradient.setColorAt(0.7, Qt.darkBlue)
+        gradient.setColorAt(1.0, Qt.darkBlue)
+
+        painter.setBrush(QBrush(gradient))
+        painter.drawEllipse(center, radius, radius)
+
+    def draw_scale(self, painter, center, radius):
+        """눈금 그리기"""
+        painter.save()
+
+        # 주눈금
+        for i in range(11):  # 0-100, 10단위
+            angle = -225 + (i * 270 / 10)  # -225도부터 45도까지
+
+            # 눈금 색상 결정
+            value = self.min_value + (i * (self.max_value - self.min_value) / 10)
+            if value >= self.critical_threshold:
+                color = self.colors['critical']
+            elif value >= self.warning_threshold:
+                color = self.colors['warning']
+            else:
+                color = self.colors['normal']
+
+            painter.setPen(QPen(color, 3))
+
+            # 눈금 라인 계산
+            start_radius = radius - 20
+            end_radius = radius - 5
+
+            start_x = center.x() + start_radius * math.cos(math.radians(angle))
+            start_y = center.y() + start_radius * math.sin(math.radians(angle))
+            end_x = center.x() + end_radius * math.cos(math.radians(angle))
+            end_y = center.y() + end_radius * math.sin(math.radians(angle))
+
+            painter.drawLine(start_x, start_y, end_x, end_y)
+
+            # 숫자 표시
+            if i % 2 == 0:  # 짝수 눈금에만 숫자
+                text_radius = radius - 35
+                text_x = center.x() + text_radius * math.cos(math.radians(angle))
+                text_y = center.y() + text_radius * math.sin(math.radians(angle))
+
+                painter.setPen(QPen(Qt.white))
+                painter.drawText(int(text_x - 10), int(text_y + 5), f"{int(value)}")
+
+        painter.restore()
+
+    def draw_needle(self, painter, center, radius):
+        """바늘 그리기"""
+        painter.save()
+
+        # 바늘 각도 계산
+        angle_range = 270  # 총 270도 범위
+        value_range = self.max_value - self.min_value
+        current_angle = -225 + (self.value - self.min_value) * angle_range / value_range
+
+        # 바늘 색상 결정
         if self.value >= self.critical_threshold:
             needle_color = self.colors['critical']
         elif self.value >= self.warning_threshold:

@@ -3,12 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Programming Lecture</title>
+    <title>HCI/HMI Lecture</title>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/dist/reveal.css">
     <link rel="stylesheet" id="theme-link" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/dist/theme/white.css">
-    <link rel="stylesheet" href="/themes/custom.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/plugin/highlight/monokai.css">
+    <link rel="stylesheet" href="/themes/custom.css">
     <link rel="stylesheet" href="/css/main.css">
 </head>
 
@@ -16,25 +16,64 @@
     <!-- Main Page -->
     <div id="main-page" class="main-page">
         <div class="header">
-            <h1>시스템 프로그래밍 강의</h1>
-            <p>System Programming Lecture Slides</p>
+            <h1>HCI/HMI 강의</h1>
+            <p>Human Computer Interaction / Human Machine Interface Lecture Slides</p>
             <div class="stats">
-                <span class="stat-item">📚 총 3주차</span>
-                <span class="stat-item">💻 3개 코드 예제</span>
-                <span class="stat-item">📄 3개 슬라이드</span>
+                <span class="stat-item">📚 총 13주차</span>
+                <span class="stat-item">💻 0개 코드 예제</span>
+                <span class="stat-item">📄 13개 슬라이드</span>
             </div>
         </div>
 
         <div class="lectures-grid">
             
             <div class="lecture-card">
-                <div class="week-number">Week 03</div>
-                <h3>Week 03: File과 Directory 처리를 위한 WinAPI</h3>
+                <div class="week-number">Week 01</div>
+                <h3>반도체 장비를 위한 HCI/HMI 이론 기초</h3>
                 <div class="description">
-                    Windows API를 사용한 파일 시스템 조작, 파일 읽기/쓰기, 디렉토리 관리, 파일 검색 및 속성 제어에 대해 학습합니다.
+                    - 반도체 제조 환경에서 HCI와 HMI의 차이점과 연관성 이해
+- 반도체 장비 운영자 중심의 인터페이스 설계 원칙 습득
+- 산업용 HMI 환경의 특수한 요구사항과 제약사항 파악
+- 사용자 중심 설계(UCD) 방법론을 반도체 장비에 적용하는 능력 확보
                 </div>
                 <div class="status-indicators">
-                    <span class="status-indicator slides">📄 Slides</span><span class="status-indicator code">💻 Code</span>
+                    <span class="status-indicator slides">📄 Slides</span>
+                </div>
+                <div class="actions">
+                    <a href="?week=01" class="view-link">강의 보기</a>
+                    <button onclick="generatePDF('01')" class="pdf-button">PDF 생성</button>
+                </div>
+            </div>
+
+            <div class="lecture-card">
+                <div class="week-number">Week 02</div>
+                <h3>C# WPF 기초 및 MVVM 패턴</h3>
+                <div class="description">
+                    - .NET Framework/Core 아키텍처와 WPF 기본 구조 이해
+- XAML 마크업과 데이터 바인딩 메커니즘 습득
+- MVVM 패턴을 활용한 반도체 장비 HMI 아키텍처 설계 능력 확보
+- 반도체 장비 모니터링을 위한 기본 WPF 애플리케이션 개발
+                </div>
+                <div class="status-indicators">
+                    <span class="status-indicator slides">📄 Slides</span>
+                </div>
+                <div class="actions">
+                    <a href="?week=02" class="view-link">강의 보기</a>
+                    <button onclick="generatePDF('02')" class="pdf-button">PDF 생성</button>
+                </div>
+            </div>
+
+            <div class="lecture-card">
+                <div class="week-number">Week 03</div>
+                <h3>C# 실시간 데이터 처리 및 통신</h3>
+                <div class="description">
+                    - 반도체 장비의 실시간 센서 데이터 수집 및 처리 기법 습득
+- 멀티스레딩을 활용한 안전하고 효율적인 비동기 프로그래밍 능력 확보
+- TCP/IP, SignalR 등 산업용 통신 프로토콜을 이용한 실시간 데이터 통신 구현
+- 24/7 연속 운영 환경을 위한 메모리 관리 및 성능 최적화 기법 적용
+                </div>
+                <div class="status-indicators">
+                    <span class="status-indicator slides">📄 Slides</span>
                 </div>
                 <div class="actions">
                     <a href="?week=03" class="view-link">강의 보기</a>
@@ -44,12 +83,15 @@
 
             <div class="lecture-card">
                 <div class="week-number">Week 04</div>
-                <h3>Week 04: Process와 Thread 관리</h3>
+                <h3>C# 고급 UI/UX 및 사용자 정의 컨트롤</h3>
                 <div class="description">
-                    Windows에서 프로세스 생성과 관리, 스레드 개념과 활용, 멀티프로세싱 및 멀티스레딩 프로그래밍 기법을 다룹니다.
+                    - 반도체 장비 환경에 특화된 사용자 정의 컨트롤 개발 능력 습득
+- 고급 레이아웃 시스템과 가상화 기법을 활용한 성능 최적화 구현
+- 3D 시각화 및 고급 애니메이션을 통한 직관적 사용자 경험 설계
+- 접근성과 다국어 지원을 고려한 글로벌 산업용 HMI 개발 역량 확보
                 </div>
                 <div class="status-indicators">
-                    <span class="status-indicator slides">📄 Slides</span><span class="status-indicator code">💻 Code</span>
+                    <span class="status-indicator slides">📄 Slides</span>
                 </div>
                 <div class="actions">
                     <a href="?week=04" class="view-link">강의 보기</a>
@@ -59,22 +101,169 @@
 
             <div class="lecture-card">
                 <div class="week-number">Week 05</div>
-                <h3>Week 05: 동기화와 상호배제</h3>
+                <h3>C# 테스트/배포 및 유지보수</h3>
                 <div class="description">
-                    Critical Section, Mutex, Semaphore, Event 등 동기화 객체를 사용한 스레드 동기화와 데드락 방지 기법을 학습합니다.
+                    - 반도체 장비 HMI의 체계적인 테스트 전략 및 자동화 테스트 구현 능력 습득
+- CI/CD 파이프라인을 통한 안전하고 효율적인 배포 프로세스 구축
+- 산업용 환경에서의 장기간 운영을 위한 모니터링 및 유지보수 체계 확립
+- 성능 프로파일링과 최적화를 통한 안정적인 24/7 운영 체계 구현
                 </div>
                 <div class="status-indicators">
-                    <span class="status-indicator slides">📄 Slides</span><span class="status-indicator code">💻 Code</span>
+                    <span class="status-indicator slides">📄 Slides</span>
                 </div>
                 <div class="actions">
                     <a href="?week=05" class="view-link">강의 보기</a>
                     <button onclick="generatePDF('05')" class="pdf-button">PDF 생성</button>
                 </div>
             </div>
+
+            <div class="lecture-card">
+                <div class="week-number">Week 06</div>
+                <h3>Python PySide6 기초 및 크로스 플랫폼 HMI 개발</h3>
+                <div class="description">
+                    - C# WPF에서 Python PySide6로의 효과적인 전환 및 크로스 플랫폼 HMI 개발 능력 습득
+- Qt Designer를 활용한 GUI 설계 및 시그널-슬롯 메커니즘 이해
+- 반도체 장비 데이터 처리를 위한 Python 생태계 활용 (NumPy, Pandas, Matplotlib)
+- 객체지향 프로그래밍과 MVC 패턴을 적용한 확장 가능한 HMI 아키텍처 구현
+                </div>
+                <div class="status-indicators">
+                    <span class="status-indicator slides">📄 Slides</span>
+                </div>
+                <div class="actions">
+                    <a href="?week=06" class="view-link">강의 보기</a>
+                    <button onclick="generatePDF('06')" class="pdf-button">PDF 생성</button>
+                </div>
+            </div>
+
+            <div class="lecture-card">
+                <div class="week-number">Week 07</div>
+                <h3>Python PySide6 실시간 데이터 처리 및 멀티스레딩</h3>
+                <div class="description">
+                    - PySide6에서 QThread를 활용한 효율적인 멀티스레딩 구현 및 UI 블록킹 방지
+- 실시간 데이터 수집, 처리, 시각화를 위한 고성능 아키텍처 설계
+- 시리얼 통신 및 네트워크 프로토콜을 통한 반도체 장비 데이터 통신 구현
+- SQLite 데이터베이스를 활용한 대용량 데이터 저장 및 이력 관리 시스템
+                </div>
+                <div class="status-indicators">
+                    <span class="status-indicator slides">📄 Slides</span>
+                </div>
+                <div class="actions">
+                    <a href="?week=07" class="view-link">강의 보기</a>
+                    <button onclick="generatePDF('07')" class="pdf-button">PDF 생성</button>
+                </div>
+            </div>
+
+            <div class="lecture-card">
+                <div class="week-number">Week 08</div>
+                <h3>Python PySide6 고급 기능 및 커스텀 UI 컴포넌트</h3>
+                <div class="description">
+                    - 커스텀 위젯 및 고급 UI 컴포넌트 개발로 전문적인 반도체 HMI 구현
+- Model-View 아키텍처 고도화 및 대규모 데이터 처리 최적화
+- 3D 시각화 및 고급 그래픽스를 활용한 직관적인 장비 상태 표현
+- 플러그인 시스템 구축으로 확장 가능한 모듈형 HMI 아키텍처 설계
+                </div>
+                <div class="status-indicators">
+                    <span class="status-indicator slides">📄 Slides</span>
+                </div>
+                <div class="actions">
+                    <a href="?week=08" class="view-link">강의 보기</a>
+                    <button onclick="generatePDF('08')" class="pdf-button">PDF 생성</button>
+                </div>
+            </div>
+
+            <div class="lecture-card">
+                <div class="week-number">Week 09</div>
+                <h3>Python PySide6 배포 및 운영 최적화</h3>
+                <div class="description">
+                    - 산업용 환경에 적합한 Python PySide6 애플리케이션 패키징 및 배포 전략 수립
+- 크로스 플랫폼 호환성과 성능 최적화를 고려한 배포 파이프라인 구축
+- 자동 업데이트 시스템 구현으로 원격 장비의 유지보수 효율성 극대화
+- 로깅, 모니터링, 보안 인증 시스템을 통한 안정적인 운영 환경 확보
+                </div>
+                <div class="status-indicators">
+                    <span class="status-indicator slides">📄 Slides</span>
+                </div>
+                <div class="actions">
+                    <a href="?week=09" class="view-link">강의 보기</a>
+                    <button onclick="generatePDF('09')" class="pdf-button">PDF 생성</button>
+                </div>
+            </div>
+
+            <div class="lecture-card">
+                <div class="week-number">Week 10</div>
+                <h3>ImGUI C++ 기초 및 실시간 반도체 HMI 개발</h3>
+                <div class="description">
+                    - ImGUI 즉시 모드 GUI 프레임워크를 활용한 고성능 실시간 반도체 장비 인터페이스 개발
+- C++ 기반 크로스 플랫폼 HMI 시스템 구축 및 네이티브 성능 최적화
+- OpenGL/DirectX 통합을 통한 하드웨어 가속 그래픽스 렌더링 구현
+- 실시간 데이터 시각화 및 인터랙티브 제어 패널 설계
+                </div>
+                <div class="status-indicators">
+                    <span class="status-indicator slides">📄 Slides</span>
+                </div>
+                <div class="actions">
+                    <a href="?week=10" class="view-link">강의 보기</a>
+                    <button onclick="generatePDF('10')" class="pdf-button">PDF 생성</button>
+                </div>
+            </div>
+
+            <div class="lecture-card">
+                <div class="week-number">Week 11</div>
+                <h3>ImGUI C++ 심화 - 고급 렌더링 및 커스텀 시각화</h3>
+                <div class="description">
+                    - ImGUI 고급 렌더링 기법 및 커스텀 드로잉을 활용한 전문적인 반도체 HMI 개발
+- 3D 시각화와 ImGUI의 통합을 통한 직관적인 장비 상태 표현 시스템 구축
+- 고성능 실시간 데이터 처리 및 메모리 최적화를 통한 안정적인 산업용 HMI 구현
+- 커스텀 위젯 개발과 고급 이벤트 처리를 통한 사용자 경험 극대화
+                </div>
+                <div class="status-indicators">
+                    <span class="status-indicator slides">📄 Slides</span>
+                </div>
+                <div class="actions">
+                    <a href="?week=11" class="view-link">강의 보기</a>
+                    <button onclick="generatePDF('11')" class="pdf-button">PDF 생성</button>
+                </div>
+            </div>
+
+            <div class="lecture-card">
+                <div class="week-number">Week 12</div>
+                <h3>ImGUI C++ 고급 기능 - 플러그인 시스템 및 확장성</h3>
+                <div class="description">
+                    - ImGUI 플러그인 아키텍처 및 모듈화 시스템 설계를 통한 확장 가능한 HMI 플랫폼 구축
+- 고급 데이터 시각화 엔진 및 대용량 데이터 처리 시스템 개발
+- 멀티스레딩 통합 및 동시성 제어를 통한 고성능 실시간 HMI 구현
+- 국제화(i18n) 및 접근성 지원을 통한 글로벌 산업용 HMI 시스템 완성
+                </div>
+                <div class="status-indicators">
+                    <span class="status-indicator slides">📄 Slides</span>
+                </div>
+                <div class="actions">
+                    <a href="?week=12" class="view-link">강의 보기</a>
+                    <button onclick="generatePDF('12')" class="pdf-button">PDF 생성</button>
+                </div>
+            </div>
+
+            <div class="lecture-card">
+                <div class="week-number">Week 13</div>
+                <h3>ImGUI C++ 통합 프로젝트 - 최종 산업용 HMI 솔루션</h3>
+                <div class="description">
+                    - 지난 12주간 학습한 모든 기술을 통합한 완전한 반도체 HMI 솔루션 구축
+- 배포 및 설치 시스템을 통한 실제 산업 환경 적용 준비
+- 성능 최적화 및 보안 강화를 통한 엔터프라이즈급 시스템 완성
+- 실제 반도체 팹 환경 시뮬레이션 및 최종 프로젝트 발표
+                </div>
+                <div class="status-indicators">
+                    <span class="status-indicator slides">📄 Slides</span>
+                </div>
+                <div class="actions">
+                    <a href="?week=13" class="view-link">강의 보기</a>
+                    <button onclick="generatePDF('13')" class="pdf-button">PDF 생성</button>
+                </div>
+            </div>
         </div>
 
         <div class="footer">
-            <p>© 2024 System Programming Course | Built with reveal.js & Vite</p>
+            <p>© 2024 HCI/HMI Course | Built with reveal.js & Vite</p>
             <p>🤖 Generated automatically by bootstrap.py</p>
         </div>
     </div>
@@ -163,9 +352,10 @@ $">
         }
 
         function loadCustomThemeCSS() {
-            // Check if custom theme CSS is already loaded
-            if (document.getElementById('custom-theme-css')) {
-                return;
+            // Force remove existing custom theme CSS first
+            const existingLink = document.getElementById('custom-theme-css');
+            if (existingLink) {
+                existingLink.remove();
             }
 
             const link = document.createElement('link');
@@ -173,6 +363,10 @@ $">
             link.rel = 'stylesheet';
             link.href = '/themes/custom.css';
             document.head.appendChild(link);
+
+            // Also ensure body has correct theme class
+            document.body.className = document.body.className.replace(/theme-\w+/g, '');
+            document.body.classList.add('theme-custom');
         }
 
         function removeCustomThemeCSS() {
@@ -192,7 +386,7 @@ $">
         function showMainPage() {
             mainPage.classList.remove('hidden');
             presentationView.classList.add('hidden');
-            document.title = 'System Programming Lecture';
+            document.title = 'HCI/HMI Lecture';
             updateTheme(currentTheme);
         }
 
@@ -241,13 +435,14 @@ $">
                 // Apply theme
                 updateTheme(currentTheme);
 
-                // Apply custom styling
+                // Force reload theme after initialization
                 setTimeout(() => {
+                    loadCustomThemeCSS();
                     applyCustomStyling();
-                }, 100);
+                }, 500);
 
                 // Update page title
-                document.title = `Week ${weekParam} - System Programming Lecture`;
+                document.title = `Week ${weekParam} - HCI/HMI Lecture`;
 
                 // Add back button
                 addBackButton();
@@ -262,23 +457,47 @@ $">
 
         async function loadWeekContent(week) {
             if (!week) {
-                return `# System Programming Lecture
+                return `# HCI/HMI Lecture
 
-Welcome to System Programming Lecture slides.
+Welcome to HCI/HMI Lecture slides.
 
 ---
 
 ## Available Weeks
 
-- Week 03: Week 03: File과 Directory 처리를 위한 WinAPI - Week 04: Week 04: Process와 Thread 관리 - Week 05: Week 05: 동기화와 상호배제
+- Week 01: 반도체 장비를 위한 HCI/HMI 이론 기초 - Week 02: C# WPF 기초 및 MVVM 패턴 - Week 03: C# 실시간 데이터 처리 및 통신 - Week 04: C# 고급 UI/UX 및 사용자 정의 컨트롤 - Week 05: C# 테스트/배포 및 유지보수 - Week 06: Python PySide6 기초 및 크로스 플랫폼 HMI 개발 - Week 07: Python PySide6 실시간 데이터 처리 및 멀티스레딩 - Week 08: Python PySide6 고급 기능 및 커스텀 UI 컴포넌트 - Week 09: Python PySide6 배포 및 운영 최적화 - Week 10: ImGUI C++ 기초 및 실시간 반도체 HMI 개발 - Week 11: ImGUI C++ 심화 - 고급 렌더링 및 커스텀 시각화 - Week 12: ImGUI C++ 고급 기능 - 플러그인 시스템 및 확장성 - Week 13: ImGUI C++ 통합 프로젝트 - 최종 산업용 HMI 솔루션
 
 Please go back to select a week.`;
             }
 
+            // Mapping for actual folder names
+            const weekFolders = {
+                '01': 'week01-hci-hmi-theory',
+                '02': 'week02-csharp-wpf-basics',
+                '03': 'week03-csharp-realtime-data',
+                '04': 'week04-csharp-advanced-ui',
+                '05': 'week05-csharp-test-deploy',
+                '06': 'week06-python-pyside6-basics',
+                '07': 'week07-python-realtime-data',
+                '08': 'week08-python-advanced-features',
+                '09': 'week09-python-deployment',
+                '10': 'week10-imgui-basics',
+                '11': 'week11-imgui-advanced',
+                '12': 'week12-imgui-advanced-features',
+                '13': 'week13-imgui-integrated-project'
+            };
+
             try {
-                const response = await fetch(`/slides/week${week.padStart(2, '0')}/slides.md`);
-                if (!response.ok) {
+                const paddedWeek = week.padStart(2, '0');
+                const folderName = weekFolders[paddedWeek];
+
+                if (!folderName) {
                     throw new Error(`Week ${week} not found`);
+                }
+
+                const response = await fetch(`/slides/${folderName}/slides.md`);
+                if (!response.ok) {
+                    throw new Error(`Week ${week} slides not found`);
                 }
                 return await response.text();
             } catch (error) {
@@ -298,7 +517,7 @@ Please check back later or contact the instructor.
 
 ## Available Weeks
 
-- [Week 03: Week 03: File과 Directory 처리를 위한 WinAPI](?week=03) - [Week 04: Week 04: Process와 Thread 관리](?week=04) - [Week 05: Week 05: 동기화와 상호배제](?week=05)`;
+- [Week 01: 반도체 장비를 위한 HCI/HMI 이론 기초](?week=01) - [Week 02: C# WPF 기초 및 MVVM 패턴](?week=02) - [Week 03: C# 실시간 데이터 처리 및 통신](?week=03) - [Week 04: C# 고급 UI/UX 및 사용자 정의 컨트롤](?week=04) - [Week 05: C# 테스트/배포 및 유지보수](?week=05) - [Week 06: Python PySide6 기초 및 크로스 플랫폼 HMI 개발](?week=06) - [Week 07: Python PySide6 실시간 데이터 처리 및 멀티스레딩](?week=07) - [Week 08: Python PySide6 고급 기능 및 커스텀 UI 컴포넌트](?week=08) - [Week 09: Python PySide6 배포 및 운영 최적화](?week=09) - [Week 10: ImGUI C++ 기초 및 실시간 반도체 HMI 개발](?week=10) - [Week 11: ImGUI C++ 심화 - 고급 렌더링 및 커스텀 시각화](?week=11) - [Week 12: ImGUI C++ 고급 기능 - 플러그인 시스템 및 확장성](?week=12) - [Week 13: ImGUI C++ 통합 프로젝트 - 최종 산업용 HMI 솔루션](?week=13)`;
             }
         }
 

@@ -15,10 +15,19 @@
 }
 
 /* Global font family for Korean support */
-.theme-custom .reveal {
+.reveal,
+.theme-custom .reveal,
+body.theme-custom .reveal {
     font-family: 'Noto Sans KR', 'NotoSansKR-Fallback', 'Malgun Gothic', 'MalgunGothic', '맑은 고딕', sans-serif !important;
+    font-size: 24px !important;
 }
 
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4,
+.reveal h5,
+.reveal h6,
 .theme-custom .reveal h1,
 .theme-custom .reveal h2,
 .theme-custom .reveal h3,
@@ -26,6 +35,7 @@
 .theme-custom .reveal h5,
 .theme-custom .reveal h6 {
     font-family: 'Noto Sans KR', 'NotoSansKR-Fallback', 'Malgun Gothic', 'MalgunGothic', '맑은 고딕', sans-serif !important;
+    text-transform: none !important;
 }
 
 .theme-custom .reveal p,
@@ -99,19 +109,29 @@
 }
 
 /* Enhanced headings */
+.reveal h1,
 .theme-custom .reveal h1 {
-    color: #1a365d;
-    border-bottom: 3px solid #007bff;
-    padding-bottom: 0.2em;
+    color: #2a5599 !important;
+    font-size: 2.2em !important;
+    border-bottom: 3px solid #2a5599 !important;
+    padding-bottom: 0.2em !important;
+    margin-bottom: 0.5em !important;
 }
 
+.reveal h2,
 .theme-custom .reveal h2 {
-    color: #2a5599;
-    border-bottom: 2px solid #007bff;
+    color: #2a5599 !important;
+    font-size: 1.6em !important;
+    border-bottom: 2px solid #2a5599 !important;
+    padding-bottom: 0.1em !important;
+    margin-bottom: 0.5em !important;
 }
 
+.reveal h3,
 .theme-custom .reveal h3 {
-    color: #4a6fa5;
+    color: #5577aa !important;
+    font-size: 1.2em !important;
+    margin-bottom: 0.5em !important;
 }
 
 /* Enhanced links */

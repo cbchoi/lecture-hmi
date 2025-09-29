@@ -87,12 +87,12 @@ async function getAvailableWeeks() {
   try {
     const files = await fs.readdir(slidesDir);
     return files
-      .filter(file => file.match(/^week\d{2}\.md$/))
-      .map(file => file.match(/week(\d{2})\.md$/)[1])
+      .filter(file => file.match(/^week\d{2}-/))
+      .map(file => file.match(/week(\d{2})-/)[1])
       .sort();
   } catch (error) {
-    console.warn('Could not read slides directory, using default weeks 01-15');
-    return Array.from({ length: 15 }, (_, i) => (i + 1).toString().padStart(2, '0'));
+    console.warn('Could not read slides directory, using default weeks 01-13');
+    return Array.from({ length: 13 }, (_, i) => (i + 1).toString().padStart(2, '0'));
   }
 }
 

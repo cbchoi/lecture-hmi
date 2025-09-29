@@ -26,8 +26,8 @@ def scan_weeks_directory(slides_path: Path) -> List[Dict[str, Any]]:
         print(f"Warning: slides directory not found at {slides_path}")
         return weeks
 
-    # Pattern to match weekXX directories
-    week_pattern = re.compile(r'^week(\d{2})$')
+    # Pattern to match weekXX or weekXX-description directories
+    week_pattern = re.compile(r'^week(\d{2})(?:-.*)?$')
 
     for item in slides_path.iterdir():
         if item.is_dir():
@@ -186,7 +186,7 @@ def generate_index_html(weeks: List[Dict[str, Any]]) -> str:
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Programming Lecture</title>
+    <title>HCI/HMI Lecture</title>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/dist/reveal.css">
     <link rel="stylesheet" id="theme-link" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/dist/theme/white.css">
@@ -199,8 +199,8 @@ def generate_index_html(weeks: List[Dict[str, Any]]) -> str:
     <!-- Main Page -->
     <div id="main-page" class="main-page">
         <div class="header">
-            <h1>시스템 프로그래밍 강의</h1>
-            <p>System Programming Lecture Slides</p>
+            <h1>HCI/HMI 강의</h1>
+            <p>Human Computer Interaction / Human Machine Interface Lecture Slides</p>
             <div class="stats">
                 <span class="stat-item">📚 총 {len(weeks)}주차</span>
                 <span class="stat-item">💻 {sum(1 for w in weeks if w.get("has_code"))}개 코드 예제</span>
@@ -213,7 +213,7 @@ def generate_index_html(weeks: List[Dict[str, Any]]) -> str:
         </div>
 
         <div class="footer">
-            <p>© 2024 System Programming Course | Built with reveal.js & Vite</p>
+            <p>© 2024 HCI/HMI Course | Built with reveal.js & Vite</p>
             <p>🤖 Generated automatically by bootstrap.py</p>
         </div>
     </div>
@@ -327,7 +327,7 @@ def generate_index_html(weeks: List[Dict[str, Any]]) -> str:
         function showMainPage() {{
             mainPage.classList.remove('hidden');
             presentationView.classList.add('hidden');
-            document.title = 'System Programming Lecture';
+            document.title = 'HCI/HMI Lecture';
             updateTheme(currentTheme);
         }}
 
@@ -382,7 +382,7 @@ def generate_index_html(weeks: List[Dict[str, Any]]) -> str:
                 }}, 100);
 
                 // Update page title
-                document.title = `Week ${{weekParam}} - System Programming Lecture`;
+                document.title = `Week ${{weekParam}} - HCI/HMI Lecture`;
 
                 // Add back button
                 addBackButton();
@@ -397,9 +397,9 @@ def generate_index_html(weeks: List[Dict[str, Any]]) -> str:
 
         async function loadWeekContent(week) {{
             if (!week) {{
-                return `# System Programming Lecture
+                return `# HCI/HMI Lecture
 
-Welcome to System Programming Lecture slides.
+Welcome to HCI/HMI Lecture slides.
 
 ---
 
@@ -411,7 +411,20 @@ Please go back to select a week.`;
             }}
 
             try {{
-                const response = await fetch(`/slides/week${{week.padStart(2, '0')}}/slides.md`);
+                // Try both formats: weekXX and weekXX-description
+                let response = await fetch(`/slides/week${{week.padStart(2, '0')}}/slides.md`);
+                if (!response.ok) {{
+                    // Try with description format by scanning slides directory
+                    const slidesResponse = await fetch('/slides/');
+                    if (slidesResponse.ok) {{
+                        const slidesContent = await slidesResponse.text();
+                        const weekPattern = new RegExp(`week${{week.padStart(2, '0')}}-[^"]*`, 'g');
+                        const match = slidesContent.match(weekPattern);
+                        if (match && match[0]) {{
+                            response = await fetch(`/slides/${{match[0]}}/slides.md`);
+                        }}
+                    }}
+                }}
                 if (!response.ok) {{
                     throw new Error(`Week ${{week}} not found`);
                 }}
