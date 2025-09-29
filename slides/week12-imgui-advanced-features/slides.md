@@ -2727,5 +2727,1627 @@ int main() {
 - 전체 시스템 통합 및 최적화
 - 배포 및 설치 시스템 구축
 - 성능 튜닝 및 보안 강화
+
+---
+
+## 🔧 **고급 심화 실습 (30분) - 커스텀 렌더링 파이프라인 및 성능 최적화**
+
+### 5. 커스텀 렌더링 백엔드 개발
+
+#### 5.1 고성능 렌더링 파이프라인
+```cpp
+// CustomRenderPipeline.h
+#pragma once
+#include <imgui.h>
+#include <memory>
+#include <vector>
+#include <unordered_map>
+#include <GL/gl3w.h>
+
+namespace SemiconductorHMI::Rendering {
+
+// 고급 셰이더 관리자
+class ShaderManager {
+private:
+    struct ShaderProgram {
+        GLuint program_id;
+        std::unordered_map<std::string, GLint> uniform_locations;
+        std::string vertex_source;
+        std::string fragment_source;
+        std::string name;
+    };
+
+    std::unordered_map<std::string, std::unique_ptr<ShaderProgram>> shaders_;
+    GLuint current_program_;
+
+public:
+    ShaderManager() : current_program_(0) {}
+
+    bool LoadShader(const std::string& name, const std::string& vertex_source, const std::string& fragment_source) {
+        auto shader = std::make_unique<ShaderProgram>();
+        shader->name = name;
+        shader->vertex_source = vertex_source;
+        shader->fragment_source = fragment_source;
+
+        // 정점 셰이더 컴파일
+        GLuint vertex_shader = CompileShader(GL_VERTEX_SHADER, vertex_source);
+        if (vertex_shader == 0) return false;
+
+        // 프래그먼트 셰이더 컴파일
+        GLuint fragment_shader = CompileShader(GL_FRAGMENT_SHADER, fragment_source);
+        if (fragment_shader == 0) {
+            glDeleteShader(vertex_shader);
+            return false;
+        }
+
+        // 프로그램 링크
+        shader->program_id = LinkProgram(vertex_shader, fragment_shader);
+        if (shader->program_id == 0) {
+            glDeleteShader(vertex_shader);
+            glDeleteShader(fragment_shader);
+            return false;
+        }
+
+        // 정리
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
+
+        // Uniform 위치 캐싱
+        CacheUniformLocations(*shader);
+
+        shaders_[name] = std::move(shader);
+        return true;
+    }
+
+    void UseShader(const std::string& name) {
+        auto it = shaders_.find(name);
+        if (it != shaders_.end()) {
+            glUseProgram(it->second->program_id);
+            current_program_ = it->second->program_id;
+        }
+    }
+
+    void SetUniform(const std::string& shader_name, const std::string& uniform_name, float value) {
+        auto shader_it = shaders_.find(shader_name);
+        if (shader_it == shaders_.end()) return;
+
+        auto uniform_it = shader_it->second->uniform_locations.find(uniform_name);
+        if (uniform_it != shader_it->second->uniform_locations.end()) {
+            glUniform1f(uniform_it->second, value);
+        }
+    }
+
+    void SetUniform(const std::string& shader_name, const std::string& uniform_name, const ImVec2& value) {
+        auto shader_it = shaders_.find(shader_name);
+        if (shader_it == shaders_.end()) return;
+
+        auto uniform_it = shader_it->second->uniform_locations.find(uniform_name);
+        if (uniform_it != shader_it->second->uniform_locations.end()) {
+            glUniform2f(uniform_it->second, value.x, value.y);
+        }
+    }
+
+    void SetUniform(const std::string& shader_name, const std::string& uniform_name, const ImVec4& value) {
+        auto shader_it = shaders_.find(shader_name);
+        if (shader_it == shaders_.end()) return;
+
+        auto uniform_it = shader_it->second->uniform_locations.find(uniform_name);
+        if (uniform_it != shader_it->second->uniform_locations.end()) {
+            glUniform4f(uniform_it->second, value.x, value.y, value.z, value.w);
+        }
+    }
+
+private:
+    GLuint CompileShader(GLenum type, const std::string& source) {
+        GLuint shader = glCreateShader(type);
+        const char* source_ptr = source.c_str();
+        glShaderSource(shader, 1, &source_ptr, nullptr);
+        glCompileShader(shader);
+
+        GLint success;
+        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            char info_log[512];
+            glGetShaderInfoLog(shader, 512, nullptr, info_log);
+            // 로그 출력 (실제 구현에서는 로깅 시스템 사용)
+            glDeleteShader(shader);
+            return 0;
+        }
+
+        return shader;
+    }
+
+    GLuint LinkProgram(GLuint vertex_shader, GLuint fragment_shader) {
+        GLuint program = glCreateProgram();
+        glAttachShader(program, vertex_shader);
+        glAttachShader(program, fragment_shader);
+        glLinkProgram(program);
+
+        GLint success;
+        glGetProgramiv(program, GL_LINK_STATUS, &success);
+        if (!success) {
+            char info_log[512];
+            glGetProgramInfoLog(program, 512, nullptr, info_log);
+            // 로그 출력
+            glDeleteProgram(program);
+            return 0;
+        }
+
+        return program;
+    }
+
+    void CacheUniformLocations(ShaderProgram& shader) {
+        GLint uniform_count;
+        glGetProgramiv(shader.program_id, GL_ACTIVE_UNIFORMS, &uniform_count);
+
+        for (GLint i = 0; i < uniform_count; i++) {
+            char name[256];
+            GLsizei length;
+            GLint size;
+            GLenum type;
+
+            glGetActiveUniform(shader.program_id, i, sizeof(name), &length, &size, &type, name);
+            GLint location = glGetUniformLocation(shader.program_id, name);
+
+            if (location >= 0) {
+                shader.uniform_locations[std::string(name)] = location;
+            }
+        }
+    }
+};
+
+// 고성능 텍스처 관리자
+class TextureManager {
+private:
+    struct TextureInfo {
+        GLuint texture_id;
+        int width, height, channels;
+        GLenum format;
+        std::string name;
+        bool is_loaded;
+    };
+
+    std::unordered_map<std::string, std::unique_ptr<TextureInfo>> textures_;
+    std::vector<GLuint> texture_pool_; // 재사용 가능한 텍스처 풀
+
+public:
+    GLuint LoadTexture(const std::string& name, int width, int height, GLenum format, const void* data = nullptr) {
+        auto texture_info = std::make_unique<TextureInfo>();
+        texture_info->name = name;
+        texture_info->width = width;
+        texture_info->height = height;
+        texture_info->format = format;
+        texture_info->is_loaded = false;
+
+        // 텍스처 생성
+        glGenTextures(1, &texture_info->texture_id);
+        glBindTexture(GL_TEXTURE_2D, texture_info->texture_id);
+
+        // 텍스처 파라미터 설정
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        // 텍스처 데이터 업로드
+        if (data) {
+            glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+            texture_info->is_loaded = true;
+        } else {
+            glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, nullptr);
+        }
+
+        GLuint texture_id = texture_info->texture_id;
+        textures_[name] = std::move(texture_info);
+
+        return texture_id;
+    }
+
+    GLuint GetTexture(const std::string& name) {
+        auto it = textures_.find(name);
+        return (it != textures_.end()) ? it->second->texture_id : 0;
+    }
+
+    void UpdateTexture(const std::string& name, const void* data) {
+        auto it = textures_.find(name);
+        if (it != textures_.end() && data) {
+            glBindTexture(GL_TEXTURE_2D, it->second->texture_id);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
+                           it->second->width, it->second->height,
+                           it->second->format, GL_UNSIGNED_BYTE, data);
+            it->second->is_loaded = true;
+        }
+    }
+
+    void DeleteTexture(const std::string& name) {
+        auto it = textures_.find(name);
+        if (it != textures_.end()) {
+            glDeleteTextures(1, &it->second->texture_id);
+            textures_.erase(it);
+        }
+    }
+
+    // 텍스처 풀에서 재사용 가능한 텍스처 가져오기
+    GLuint GetPooledTexture(int width, int height, GLenum format) {
+        // 간단한 구현 - 실제로는 크기와 포맷이 일치하는 텍스처 찾기
+        if (!texture_pool_.empty()) {
+            GLuint texture = texture_pool_.back();
+            texture_pool_.pop_back();
+            return texture;
+        }
+
+        // 새 텍스처 생성
+        GLuint texture;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, nullptr);
+        return texture;
+    }
+
+    void ReturnToPool(GLuint texture) {
+        texture_pool_.push_back(texture);
+    }
+};
+
+// 고급 렌더링 파이프라인
+class CustomRenderPipeline {
+private:
+    ShaderManager shader_manager_;
+    TextureManager texture_manager_;
+
+    // 렌더 타겟들
+    GLuint main_framebuffer_;
+    GLuint color_texture_;
+    GLuint depth_texture_;
+    GLuint intermediate_framebuffer_;
+    GLuint intermediate_texture_;
+
+    // 포스트 프로세싱 체인
+    std::vector<std::string> post_process_passes_;
+
+    int screen_width_, screen_height_;
+
+public:
+    CustomRenderPipeline() : main_framebuffer_(0), color_texture_(0), depth_texture_(0),
+                            intermediate_framebuffer_(0), intermediate_texture_(0),
+                            screen_width_(0), screen_height_(0) {}
+
+    bool Initialize(int width, int height) {
+        screen_width_ = width;
+        screen_height_ = height;
+
+        // 기본 셰이더들 로드
+        LoadDefaultShaders();
+
+        // 프레임버퍼 설정
+        SetupFramebuffers();
+
+        return true;
+    }
+
+    void Resize(int width, int height) {
+        if (width == screen_width_ && height == screen_height_) return;
+
+        screen_width_ = width;
+        screen_height_ = height;
+
+        // 텍스처 크기 변경
+        ResizeTextures();
+    }
+
+    void BeginFrame() {
+        // 메인 프레임버퍼에 렌더링 시작
+        glBindFramebuffer(GL_FRAMEBUFFER, main_framebuffer_);
+        glViewport(0, 0, screen_width_, screen_height_);
+
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
+
+    void EndFrame() {
+        // 포스트 프로세싱 수행
+        ApplyPostProcessing();
+
+        // 최종 결과를 백버퍼에 렌더링
+        PresentToBackbuffer();
+    }
+
+    void AddPostProcessPass(const std::string& shader_name) {
+        post_process_passes_.push_back(shader_name);
+    }
+
+    void RenderFullscreenQuad() {
+        // 전체 화면 사각형 렌더링 (포스트 프로세싱용)
+        static GLuint quad_vao = 0;
+        if (quad_vao == 0) {
+            float quad_vertices[] = {
+                -1.0f,  1.0f, 0.0f, 1.0f,
+                -1.0f, -1.0f, 0.0f, 0.0f,
+                 1.0f, -1.0f, 1.0f, 0.0f,
+                 1.0f,  1.0f, 1.0f, 1.0f
+            };
+
+            GLuint quad_vbo;
+            glGenVertexArrays(1, &quad_vao);
+            glGenBuffers(1, &quad_vbo);
+
+            glBindVertexArray(quad_vao);
+            glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), quad_vertices, GL_STATIC_DRAW);
+
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+        }
+
+        glBindVertexArray(quad_vao);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    }
+
+    ShaderManager& GetShaderManager() { return shader_manager_; }
+    TextureManager& GetTextureManager() { return texture_manager_; }
+
+private:
+    void LoadDefaultShaders() {
+        // 기본 정점 셰이더
+        std::string default_vertex = R"(
+            #version 330 core
+            layout (location = 0) in vec2 aPos;
+            layout (location = 1) in vec2 aTexCoord;
+
+            out vec2 TexCoord;
+
+            uniform mat4 uProjection;
+            uniform mat4 uModelView;
+
+            void main() {
+                TexCoord = aTexCoord;
+                gl_Position = uProjection * uModelView * vec4(aPos, 0.0, 1.0);
+            }
+        )";
+
+        // 기본 프래그먼트 셰이더
+        std::string default_fragment = R"(
+            #version 330 core
+            out vec4 FragColor;
+
+            in vec2 TexCoord;
+            uniform sampler2D uTexture;
+            uniform vec4 uColor;
+
+            void main() {
+                FragColor = texture(uTexture, TexCoord) * uColor;
+            }
+        )";
+
+        // 블룸 효과 셰이더
+        std::string bloom_fragment = R"(
+            #version 330 core
+            out vec4 FragColor;
+
+            in vec2 TexCoord;
+            uniform sampler2D uTexture;
+            uniform bool uHorizontal;
+            uniform float uBloomThreshold;
+
+            void main() {
+                vec3 color = texture(uTexture, TexCoord).rgb;
+
+                if (uHorizontal) {
+                    // 수평 블러
+                    vec2 tex_offset = 1.0 / textureSize(uTexture, 0);
+                    vec3 result = color * 0.227027;
+
+                    for(int i = 1; i < 5; ++i) {
+                        result += texture(uTexture, TexCoord + vec2(tex_offset.x * i, 0.0)).rgb * 0.1945946;
+                        result += texture(uTexture, TexCoord - vec2(tex_offset.x * i, 0.0)).rgb * 0.1945946;
+                    }
+
+                    FragColor = vec4(result, 1.0);
+                } else {
+                    // 수직 블러
+                    vec2 tex_offset = 1.0 / textureSize(uTexture, 0);
+                    vec3 result = color * 0.227027;
+
+                    for(int i = 1; i < 5; ++i) {
+                        result += texture(uTexture, TexCoord + vec2(0.0, tex_offset.y * i)).rgb * 0.1945946;
+                        result += texture(uTexture, TexCoord - vec2(0.0, tex_offset.y * i)).rgb * 0.1945946;
+                    }
+
+                    FragColor = vec4(result, 1.0);
+                }
+            }
+        )";
+
+        // 톤 매핑 셰이더
+        std::string tonemap_fragment = R"(
+            #version 330 core
+            out vec4 FragColor;
+
+            in vec2 TexCoord;
+            uniform sampler2D uHDRTexture;
+            uniform sampler2D uBloomTexture;
+            uniform float uExposure;
+            uniform float uGamma;
+
+            void main() {
+                vec3 hdr_color = texture(uHDRTexture, TexCoord).rgb;
+                vec3 bloom_color = texture(uBloomTexture, TexCoord).rgb;
+
+                // 블룸 추가
+                hdr_color += bloom_color;
+
+                // 톤 매핑 (Reinhard)
+                vec3 mapped = hdr_color / (hdr_color + vec3(1.0));
+
+                // 감마 보정
+                mapped = pow(mapped, vec3(1.0 / uGamma));
+
+                FragColor = vec4(mapped, 1.0);
+            }
+        )";
+
+        shader_manager_.LoadShader("default", default_vertex, default_fragment);
+        shader_manager_.LoadShader("bloom", default_vertex, bloom_fragment);
+        shader_manager_.LoadShader("tonemap", default_vertex, tonemap_fragment);
+    }
+
+    void SetupFramebuffers() {
+        // 메인 프레임버퍼 생성
+        glGenFramebuffers(1, &main_framebuffer_);
+        glBindFramebuffer(GL_FRAMEBUFFER, main_framebuffer_);
+
+        // 컬러 텍스처 생성
+        color_texture_ = texture_manager_.LoadTexture("main_color", screen_width_, screen_height_, GL_RGBA16F);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color_texture_, 0);
+
+        // 깊이 텍스처 생성
+        depth_texture_ = texture_manager_.LoadTexture("main_depth", screen_width_, screen_height_, GL_DEPTH_COMPONENT24);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth_texture_, 0);
+
+        // 중간 프레임버퍼 생성 (포스트 프로세싱용)
+        glGenFramebuffers(1, &intermediate_framebuffer_);
+        glBindFramebuffer(GL_FRAMEBUFFER, intermediate_framebuffer_);
+
+        intermediate_texture_ = texture_manager_.LoadTexture("intermediate", screen_width_, screen_height_, GL_RGBA16F);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, intermediate_texture_, 0);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    void ResizeTextures() {
+        // 기존 텍스처들 업데이트
+        texture_manager_.DeleteTexture("main_color");
+        texture_manager_.DeleteTexture("main_depth");
+        texture_manager_.DeleteTexture("intermediate");
+
+        color_texture_ = texture_manager_.LoadTexture("main_color", screen_width_, screen_height_, GL_RGBA16F);
+        depth_texture_ = texture_manager_.LoadTexture("main_depth", screen_width_, screen_height_, GL_DEPTH_COMPONENT24);
+        intermediate_texture_ = texture_manager_.LoadTexture("intermediate", screen_width_, screen_height_, GL_RGBA16F);
+
+        // 프레임버퍼 재설정
+        glBindFramebuffer(GL_FRAMEBUFFER, main_framebuffer_);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color_texture_, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth_texture_, 0);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, intermediate_framebuffer_);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, intermediate_texture_, 0);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    void ApplyPostProcessing() {
+        // 포스트 프로세싱 효과들을 순차적으로 적용
+        GLuint source_texture = color_texture_;
+        GLuint target_framebuffer = intermediate_framebuffer_;
+
+        for (const std::string& pass : post_process_passes_) {
+            glBindFramebuffer(GL_FRAMEBUFFER, target_framebuffer);
+            glViewport(0, 0, screen_width_, screen_height_);
+
+            shader_manager_.UseShader(pass);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, source_texture);
+
+            RenderFullscreenQuad();
+
+            // 다음 패스를 위해 소스와 타겟 교체
+            source_texture = intermediate_texture_;
+            target_framebuffer = (target_framebuffer == intermediate_framebuffer_) ? main_framebuffer_ : intermediate_framebuffer_;
+        }
+    }
+
+    void PresentToBackbuffer() {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, screen_width_, screen_height_);
+
+        shader_manager_.UseShader("default");
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, color_texture_);
+
+        RenderFullscreenQuad();
+    }
+};
+
+} // namespace SemiconductorHMI::Rendering
+```
+
+#### 5.2 실시간 성능 프로파일러
+```cpp
+// PerformanceProfiler.h
+#pragma once
+#include <chrono>
+#include <string>
+#include <unordered_map>
+#include <vector>
+#include <mutex>
+#include <memory>
+
+namespace SemiconductorHMI::Profiling {
+
+class PerformanceProfiler {
+private:
+    struct ProfileData {
+        std::string name;
+        std::chrono::high_resolution_clock::time_point start_time;
+        std::chrono::duration<double, std::milli> accumulated_time{0};
+        size_t call_count = 0;
+        double min_time = std::numeric_limits<double>::max();
+        double max_time = 0.0;
+        bool is_active = false;
+    };
+
+    std::unordered_map<std::string, std::unique_ptr<ProfileData>> profiles_;
+    std::vector<std::pair<std::string, double>> frame_times_; // 프레임별 시간 저장
+    std::mutex profiles_mutex_;
+
+    // 히스토리 관리
+    static constexpr size_t MAX_HISTORY_SIZE = 1000;
+    std::unordered_map<std::string, std::vector<double>> time_history_;
+
+public:
+    static PerformanceProfiler& GetInstance() {
+        static PerformanceProfiler instance;
+        return instance;
+    }
+
+    void BeginProfile(const std::string& name) {
+        std::lock_guard<std::mutex> lock(profiles_mutex_);
+
+        auto it = profiles_.find(name);
+        if (it == profiles_.end()) {
+            profiles_[name] = std::make_unique<ProfileData>();
+            profiles_[name]->name = name;
+        }
+
+        ProfileData& data = *profiles_[name];
+        if (!data.is_active) {
+            data.start_time = std::chrono::high_resolution_clock::now();
+            data.is_active = true;
+        }
+    }
+
+    void EndProfile(const std::string& name) {
+        auto end_time = std::chrono::high_resolution_clock::now();
+
+        std::lock_guard<std::mutex> lock(profiles_mutex_);
+
+        auto it = profiles_.find(name);
+        if (it != profiles_.end() && it->second->is_active) {
+            ProfileData& data = *it->second;
+
+            auto duration = std::chrono::duration<double, std::milli>(end_time - data.start_time);
+            double duration_ms = duration.count();
+
+            data.accumulated_time += duration;
+            data.call_count++;
+            data.min_time = std::min(data.min_time, duration_ms);
+            data.max_time = std::max(data.max_time, duration_ms);
+            data.is_active = false;
+
+            // 히스토리에 추가
+            auto& history = time_history_[name];
+            history.push_back(duration_ms);
+            if (history.size() > MAX_HISTORY_SIZE) {
+                history.erase(history.begin());
+            }
+        }
+    }
+
+    void ShowProfilerWindow() {
+        if (ImGui::Begin("Performance Profiler")) {
+
+            // 요약 통계
+            ImGui::Text("Active Profiles: %zu", profiles_.size());
+            ImGui::Separator();
+
+            // 테이블로 프로필 데이터 표시
+            if (ImGui::BeginTable("ProfileTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable)) {
+                ImGui::TableSetupColumn("Name");
+                ImGui::TableSetupColumn("Calls");
+                ImGui::TableSetupColumn("Total (ms)");
+                ImGui::TableSetupColumn("Avg (ms)");
+                ImGui::TableSetupColumn("Min (ms)");
+                ImGui::TableSetupColumn("Max (ms)");
+                ImGui::TableHeadersRow();
+
+                std::lock_guard<std::mutex> lock(profiles_mutex_);
+                for (const auto& [name, data] : profiles_) {
+                    if (data->call_count == 0) continue;
+
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%s", name.c_str());
+
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%zu", data->call_count);
+
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%.3f", data->accumulated_time.count());
+
+                    ImGui::TableNextColumn();
+                    double avg_time = data->accumulated_time.count() / data->call_count;
+                    ImGui::Text("%.3f", avg_time);
+
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%.3f", data->min_time);
+
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%.3f", data->max_time);
+                }
+
+                ImGui::EndTable();
+            }
+
+            ImGui::Separator();
+
+            // 시간 그래프
+            for (const auto& [name, history] : time_history_) {
+                if (history.empty()) continue;
+
+                std::string plot_label = name + " Time History";
+                ImGui::PlotLines(plot_label.c_str(), history.data(), static_cast<int>(history.size()),
+                                0, nullptr, 0.0f, FLT_MAX, ImVec2(0, 80));
+            }
+
+            // 리셋 버튼
+            if (ImGui::Button("Reset All Profiles")) {
+                ResetAllProfiles();
+            }
+        }
+        ImGui::End();
+    }
+
+    void ResetAllProfiles() {
+        std::lock_guard<std::mutex> lock(profiles_mutex_);
+        for (auto& [name, data] : profiles_) {
+            data->accumulated_time = std::chrono::duration<double, std::milli>(0);
+            data->call_count = 0;
+            data->min_time = std::numeric_limits<double>::max();
+            data->max_time = 0.0;
+            data->is_active = false;
+        }
+        time_history_.clear();
+    }
+
+    // 특정 프로필의 평균 시간 반환
+    double GetAverageTime(const std::string& name) const {
+        std::lock_guard<std::mutex> lock(profiles_mutex_);
+        auto it = profiles_.find(name);
+        if (it != profiles_.end() && it->second->call_count > 0) {
+            return it->second->accumulated_time.count() / it->second->call_count;
+        }
+        return 0.0;
+    }
+};
+
+// RAII 스타일 프로파일러 도우미 클래스
+class ScopedProfiler {
+private:
+    std::string profile_name_;
+
+public:
+    explicit ScopedProfiler(const std::string& name) : profile_name_(name) {
+        PerformanceProfiler::GetInstance().BeginProfile(profile_name_);
+    }
+
+    ~ScopedProfiler() {
+        PerformanceProfiler::GetInstance().EndProfile(profile_name_);
+    }
+};
+
+// 매크로로 편리하게 사용
+#define PROFILE_SCOPE(name) ScopedProfiler _prof(name)
+#define PROFILE_FUNCTION() ScopedProfiler _prof(__FUNCTION__)
+
+} // namespace SemiconductorHMI::Profiling
+```
+
+### 6. 고급 메모리 관리 및 최적화
+
+#### 6.1 커스텀 메모리 풀 시스템
+```cpp
+// MemoryManager.h
+#pragma once
+#include <memory>
+#include <vector>
+#include <mutex>
+#include <unordered_map>
+#include <cstddef>
+
+namespace SemiconductorHMI::Memory {
+
+// 메모리 풀 블록
+template<typename T>
+class MemoryPool {
+private:
+    struct Block {
+        alignas(T) char data[sizeof(T)];
+        Block* next;
+    };
+
+    Block* free_list_;
+    std::vector<std::unique_ptr<Block[]>> chunks_;
+    size_t chunk_size_;
+    std::mutex mutex_;
+
+public:
+    explicit MemoryPool(size_t chunk_size = 1024)
+        : free_list_(nullptr), chunk_size_(chunk_size) {
+        AllocateChunk();
+    }
+
+    ~MemoryPool() = default;
+
+    template<typename... Args>
+    T* Allocate(Args&&... args) {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        if (!free_list_) {
+            AllocateChunk();
+        }
+
+        Block* block = free_list_;
+        free_list_ = free_list_->next;
+
+        // placement new로 객체 생성
+        return new(block->data) T(std::forward<Args>(args)...);
+    }
+
+    void Deallocate(T* ptr) {
+        if (!ptr) return;
+
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        // 소멸자 호출
+        ptr->~T();
+
+        // 블록을 free list에 반환
+        Block* block = reinterpret_cast<Block*>(ptr);
+        block->next = free_list_;
+        free_list_ = block;
+    }
+
+    size_t GetChunkCount() const { return chunks_.size(); }
+    size_t GetTotalCapacity() const { return chunks_.size() * chunk_size_; }
+
+private:
+    void AllocateChunk() {
+        auto chunk = std::make_unique<Block[]>(chunk_size_);
+
+        // 새 청크의 블록들을 free list에 연결
+        for (size_t i = 0; i < chunk_size_ - 1; ++i) {
+            chunk[i].next = &chunk[i + 1];
+        }
+        chunk[chunk_size_ - 1].next = free_list_;
+        free_list_ = chunk.get();
+
+        chunks_.push_back(std::move(chunk));
+    }
+};
+
+// 범용 메모리 관리자
+class MemoryManager {
+private:
+    struct AllocationInfo {
+        size_t size;
+        std::chrono::time_point<std::chrono::steady_clock> allocation_time;
+        std::string file;
+        int line;
+        std::string function;
+    };
+
+    std::unordered_map<void*, AllocationInfo> allocations_;
+    std::mutex allocations_mutex_;
+
+    size_t total_allocated_;
+    size_t peak_allocated_;
+    size_t allocation_count_;
+
+public:
+    static MemoryManager& GetInstance() {
+        static MemoryManager instance;
+        return instance;
+    }
+
+    MemoryManager() : total_allocated_(0), peak_allocated_(0), allocation_count_(0) {}
+
+    void* Allocate(size_t size, const char* file = nullptr, int line = 0, const char* function = nullptr) {
+        void* ptr = std::malloc(size);
+        if (!ptr) {
+            throw std::bad_alloc();
+        }
+
+        std::lock_guard<std::mutex> lock(allocations_mutex_);
+
+        AllocationInfo info;
+        info.size = size;
+        info.allocation_time = std::chrono::steady_clock::now();
+        if (file) info.file = file;
+        info.line = line;
+        if (function) info.function = function;
+
+        allocations_[ptr] = info;
+        total_allocated_ += size;
+        peak_allocated_ = std::max(peak_allocated_, total_allocated_);
+        allocation_count_++;
+
+        return ptr;
+    }
+
+    void Deallocate(void* ptr) {
+        if (!ptr) return;
+
+        std::lock_guard<std::mutex> lock(allocations_mutex_);
+
+        auto it = allocations_.find(ptr);
+        if (it != allocations_.end()) {
+            total_allocated_ -= it->second.size;
+            allocations_.erase(it);
+        }
+
+        std::free(ptr);
+    }
+
+    void ShowMemoryWindow() {
+        if (ImGui::Begin("Memory Manager")) {
+
+            // 메모리 통계
+            ImGui::Text("Current Allocated: %.2f MB", total_allocated_ / (1024.0 * 1024.0));
+            ImGui::Text("Peak Allocated: %.2f MB", peak_allocated_ / (1024.0 * 1024.0));
+            ImGui::Text("Active Allocations: %zu", allocations_.size());
+            ImGui::Text("Total Allocations: %zu", allocation_count_);
+
+            ImGui::Separator();
+
+            // 활성 할당 목록
+            if (ImGui::CollapsingHeader("Active Allocations")) {
+                std::lock_guard<std::mutex> lock(allocations_mutex_);
+
+                if (ImGui::BeginTable("AllocTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable)) {
+                    ImGui::TableSetupColumn("Address");
+                    ImGui::TableSetupColumn("Size (bytes)");
+                    ImGui::TableSetupColumn("Age (sec)");
+                    ImGui::TableSetupColumn("File");
+                    ImGui::TableSetupColumn("Function");
+                    ImGui::TableHeadersRow();
+
+                    auto now = std::chrono::steady_clock::now();
+                    for (const auto& [ptr, info] : allocations_) {
+                        ImGui::TableNextRow();
+
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%p", ptr);
+
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%zu", info.size);
+
+                        ImGui::TableNextColumn();
+                        auto age = std::chrono::duration_cast<std::chrono::seconds>(now - info.allocation_time).count();
+                        ImGui::Text("%ld", age);
+
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%s:%d", info.file.c_str(), info.line);
+
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%s", info.function.c_str());
+                    }
+
+                    ImGui::EndTable();
+                }
+            }
+
+            // 메모리 누수 감지
+            if (ImGui::Button("Check for Leaks")) {
+                CheckForLeaks();
+            }
+        }
+        ImGui::End();
+    }
+
+private:
+    void CheckForLeaks() {
+        std::lock_guard<std::mutex> lock(allocations_mutex_);
+
+        auto now = std::chrono::steady_clock::now();
+        size_t leak_count = 0;
+        size_t leak_size = 0;
+
+        for (const auto& [ptr, info] : allocations_) {
+            auto age = std::chrono::duration_cast<std::chrono::minutes>(now - info.allocation_time).count();
+            if (age > 10) { // 10분 이상 된 할당은 누수 의심
+                leak_count++;
+                leak_size += info.size;
+            }
+        }
+
+        if (leak_count > 0) {
+            // 로그나 경고 표시
+            ImGui::OpenPopup("Memory Leak Warning");
+        }
+    }
+};
+
+// 커스텀 스마트 포인터 (메모리 풀 사용)
+template<typename T>
+class PoolPtr {
+private:
+    T* ptr_;
+    MemoryPool<T>* pool_;
+
+public:
+    explicit PoolPtr(MemoryPool<T>* pool) : ptr_(nullptr), pool_(pool) {}
+
+    template<typename... Args>
+    PoolPtr(MemoryPool<T>* pool, Args&&... args)
+        : pool_(pool) {
+        ptr_ = pool_->Allocate(std::forward<Args>(args)...);
+    }
+
+    ~PoolPtr() {
+        if (ptr_ && pool_) {
+            pool_->Deallocate(ptr_);
+        }
+    }
+
+    // 이동 생성자
+    PoolPtr(PoolPtr&& other) noexcept
+        : ptr_(other.ptr_), pool_(other.pool_) {
+        other.ptr_ = nullptr;
+        other.pool_ = nullptr;
+    }
+
+    // 이동 대입 연산자
+    PoolPtr& operator=(PoolPtr&& other) noexcept {
+        if (this != &other) {
+            if (ptr_ && pool_) {
+                pool_->Deallocate(ptr_);
+            }
+            ptr_ = other.ptr_;
+            pool_ = other.pool_;
+            other.ptr_ = nullptr;
+            other.pool_ = nullptr;
+        }
+        return *this;
+    }
+
+    // 복사 생성자와 복사 대입 연산자는 삭제
+    PoolPtr(const PoolPtr&) = delete;
+    PoolPtr& operator=(const PoolPtr&) = delete;
+
+    T* operator->() { return ptr_; }
+    const T* operator->() const { return ptr_; }
+    T& operator*() { return *ptr_; }
+    const T& operator*() const { return *ptr_; }
+
+    T* get() { return ptr_; }
+    const T* get() const { return ptr_; }
+
+    explicit operator bool() const { return ptr_ != nullptr; }
+
+    void reset() {
+        if (ptr_ && pool_) {
+            pool_->Deallocate(ptr_);
+            ptr_ = nullptr;
+        }
+    }
+};
+
+// 편의를 위한 팩토리 함수
+template<typename T, typename... Args>
+PoolPtr<T> MakePooled(MemoryPool<T>& pool, Args&&... args) {
+    return PoolPtr<T>(&pool, std::forward<Args>(args)...);
+}
+
+} // namespace SemiconductorHMI::Memory
+
+// 디버그 모드에서만 메모리 추적 활성화
+#ifdef _DEBUG
+#define TRACKED_MALLOC(size) SemiconductorHMI::Memory::MemoryManager::GetInstance().Allocate(size, __FILE__, __LINE__, __FUNCTION__)
+#define TRACKED_FREE(ptr) SemiconductorHMI::Memory::MemoryManager::GetInstance().Deallocate(ptr)
+#else
+#define TRACKED_MALLOC(size) std::malloc(size)
+#define TRACKED_FREE(ptr) std::free(ptr)
+#endif
+```
+
+---
+
+## 💡 **실전 프로젝트 확장 (30분) - 엔터프라이즈급 HMI 시스템**
+
+### 7. 분산 시스템 통합
+
+#### 7.1 마이크로서비스 아키텍처 연동
+```cpp
+// DistributedSystemClient.h
+#pragma once
+#include <string>
+#include <vector>
+#include <memory>
+#include <future>
+#include <functional>
+#include <boost/asio.hpp>
+#include <nlohmann/json.hpp>
+
+namespace SemiconductorHMI::Distributed {
+
+// RESTful API 클라이언트
+class RestApiClient {
+private:
+    boost::asio::io_context io_context_;
+    std::unique_ptr<std::thread> worker_thread_;
+    std::string base_url_;
+    std::string auth_token_;
+
+public:
+    RestApiClient(const std::string& base_url) : base_url_(base_url) {
+        worker_thread_ = std::make_unique<std::thread>([this]() {
+            io_context_.run();
+        });
+    }
+
+    ~RestApiClient() {
+        io_context_.stop();
+        if (worker_thread_ && worker_thread_->joinable()) {
+            worker_thread_->join();
+        }
+    }
+
+    void SetAuthToken(const std::string& token) {
+        auth_token_ = token;
+    }
+
+    std::future<nlohmann::json> GetAsync(const std::string& endpoint) {
+        auto promise = std::make_shared<std::promise<nlohmann::json>>();
+        auto future = promise->get_future();
+
+        boost::asio::post(io_context_, [this, endpoint, promise]() {
+            try {
+                // HTTP GET 요청 수행 (실제 구현에서는 curl 또는 boost::beast 사용)
+                nlohmann::json response = PerformHttpGet(base_url_ + endpoint);
+                promise->set_value(response);
+            } catch (const std::exception& e) {
+                promise->set_exception(std::current_exception());
+            }
+        });
+
+        return future;
+    }
+
+    std::future<nlohmann::json> PostAsync(const std::string& endpoint, const nlohmann::json& data) {
+        auto promise = std::make_shared<std::promise<nlohmann::json>>();
+        auto future = promise->get_future();
+
+        boost::asio::post(io_context_, [this, endpoint, data, promise]() {
+            try {
+                nlohmann::json response = PerformHttpPost(base_url_ + endpoint, data);
+                promise->set_value(response);
+            } catch (const std::exception& e) {
+                promise->set_exception(std::current_exception());
+            }
+        });
+
+        return future;
+    }
+
+private:
+    nlohmann::json PerformHttpGet(const std::string& url) {
+        // HTTP GET 구현 (예시)
+        // 실제로는 libcurl이나 boost::beast 사용
+        nlohmann::json result;
+        result["status"] = "success";
+        result["data"] = nlohmann::json::array();
+        return result;
+    }
+
+    nlohmann::json PerformHttpPost(const std::string& url, const nlohmann::json& data) {
+        // HTTP POST 구현 (예시)
+        nlohmann::json result;
+        result["status"] = "success";
+        result["message"] = "Data posted successfully";
+        return result;
+    }
+};
+
+// 마이크로서비스 관리자
+class MicroserviceManager {
+private:
+    struct ServiceInfo {
+        std::string name;
+        std::string url;
+        std::string version;
+        bool is_healthy;
+        std::chrono::time_point<std::chrono::steady_clock> last_health_check;
+        std::unique_ptr<RestApiClient> client;
+    };
+
+    std::unordered_map<std::string, std::unique_ptr<ServiceInfo>> services_;
+    std::thread health_check_thread_;
+    std::atomic<bool> running_;
+
+public:
+    MicroserviceManager() : running_(true) {
+        StartHealthCheckLoop();
+    }
+
+    ~MicroserviceManager() {
+        running_ = false;
+        if (health_check_thread_.joinable()) {
+            health_check_thread_.join();
+        }
+    }
+
+    void RegisterService(const std::string& name, const std::string& url, const std::string& version) {
+        auto service = std::make_unique<ServiceInfo>();
+        service->name = name;
+        service->url = url;
+        service->version = version;
+        service->is_healthy = false;
+        service->client = std::make_unique<RestApiClient>(url);
+
+        services_[name] = std::move(service);
+    }
+
+    RestApiClient* GetServiceClient(const std::string& name) {
+        auto it = services_.find(name);
+        if (it != services_.end() && it->second->is_healthy) {
+            return it->second->client.get();
+        }
+        return nullptr;
+    }
+
+    void ShowServiceStatusWindow() {
+        if (ImGui::Begin("Microservice Status")) {
+
+            if (ImGui::BeginTable("ServiceTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable)) {
+                ImGui::TableSetupColumn("Service");
+                ImGui::TableSetupColumn("URL");
+                ImGui::TableSetupColumn("Version");
+                ImGui::TableSetupColumn("Status");
+                ImGui::TableHeadersRow();
+
+                for (const auto& [name, service] : services_) {
+                    ImGui::TableNextRow();
+
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%s", service->name.c_str());
+
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%s", service->url.c_str());
+
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%s", service->version.c_str());
+
+                    ImGui::TableNextColumn();
+                    if (service->is_healthy) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+                        ImGui::Text("Healthy");
+                        ImGui::PopStyleColor();
+                    } else {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+                        ImGui::Text("Unhealthy");
+                        ImGui::PopStyleColor();
+                    }
+                }
+
+                ImGui::EndTable();
+            }
+
+            // 서비스 등록 UI
+            static char service_name[128] = "";
+            static char service_url[256] = "";
+            static char service_version[32] = "";
+
+            ImGui::Separator();
+            ImGui::Text("Register New Service");
+            ImGui::InputText("Name", service_name, sizeof(service_name));
+            ImGui::InputText("URL", service_url, sizeof(service_url));
+            ImGui::InputText("Version", service_version, sizeof(service_version));
+
+            if (ImGui::Button("Register Service")) {
+                if (strlen(service_name) > 0 && strlen(service_url) > 0) {
+                    RegisterService(service_name, service_url, service_version);
+
+                    // 입력 필드 초기화
+                    service_name[0] = '\0';
+                    service_url[0] = '\0';
+                    service_version[0] = '\0';
+                }
+            }
+        }
+        ImGui::End();
+    }
+
+private:
+    void StartHealthCheckLoop() {
+        health_check_thread_ = std::thread([this]() {
+            while (running_) {
+                for (auto& [name, service] : services_) {
+                    CheckServiceHealth(*service);
+                }
+
+                std::this_thread::sleep_for(std::chrono::seconds(30)); // 30초마다 헬스 체크
+            }
+        });
+    }
+
+    void CheckServiceHealth(ServiceInfo& service) {
+        try {
+            auto future = service.client->GetAsync("/health");
+            auto status = future.wait_for(std::chrono::seconds(5));
+
+            if (status == std::future_status::ready) {
+                auto response = future.get();
+                service.is_healthy = (response["status"] == "healthy");
+            } else {
+                service.is_healthy = false;
+            }
+        } catch (const std::exception&) {
+            service.is_healthy = false;
+        }
+
+        service.last_health_check = std::chrono::steady_clock::now();
+    }
+};
+
+} // namespace SemiconductorHMI::Distributed
+```
+
+#### 7.2 실시간 데이터 동기화 시스템
+```cpp
+// DataSynchronization.h
+#pragma once
+#include <vector>
+#include <memory>
+#include <atomic>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
+#include <functional>
+
+namespace SemiconductorHMI::Sync {
+
+// 데이터 변경 이벤트
+struct DataChangeEvent {
+    std::string entity_type;
+    std::string entity_id;
+    std::string change_type; // "create", "update", "delete"
+    nlohmann::json data;
+    std::chrono::time_point<std::chrono::system_clock> timestamp;
+};
+
+// 데이터 동기화 관리자
+class DataSynchronizationManager {
+private:
+    std::queue<DataChangeEvent> event_queue_;
+    std::mutex queue_mutex_;
+    std::condition_variable queue_cv_;
+    std::atomic<bool> running_;
+    std::thread worker_thread_;
+
+    std::vector<std::function<void(const DataChangeEvent&)>> event_handlers_;
+    std::mutex handlers_mutex_;
+
+    // 충돌 해결 전략
+    enum class ConflictResolution {
+        LAST_WRITE_WINS,
+        FIRST_WRITE_WINS,
+        MERGE_CHANGES,
+        USER_DECISION
+    };
+
+    ConflictResolution conflict_resolution_ = ConflictResolution::LAST_WRITE_WINS;
+
+public:
+    DataSynchronizationManager() : running_(true) {
+        worker_thread_ = std::thread(&DataSynchronizationManager::ProcessEvents, this);
+    }
+
+    ~DataSynchronizationManager() {
+        running_ = false;
+        queue_cv_.notify_all();
+        if (worker_thread_.joinable()) {
+            worker_thread_.join();
+        }
+    }
+
+    void PublishChange(const DataChangeEvent& event) {
+        std::lock_guard<std::mutex> lock(queue_mutex_);
+        event_queue_.push(event);
+        queue_cv_.notify_one();
+    }
+
+    void Subscribe(std::function<void(const DataChangeEvent&)> handler) {
+        std::lock_guard<std::mutex> lock(handlers_mutex_);
+        event_handlers_.push_back(handler);
+    }
+
+    void SetConflictResolution(ConflictResolution strategy) {
+        conflict_resolution_ = strategy;
+    }
+
+    void ShowSyncStatusWindow() {
+        if (ImGui::Begin("Data Synchronization")) {
+
+            // 큐 상태
+            {
+                std::lock_guard<std::mutex> lock(queue_mutex_);
+                ImGui::Text("Pending Events: %zu", event_queue_.size());
+            }
+
+            // 핸들러 수
+            {
+                std::lock_guard<std::mutex> lock(handlers_mutex_);
+                ImGui::Text("Active Handlers: %zu", event_handlers_.size());
+            }
+
+            ImGui::Separator();
+
+            // 충돌 해결 전략 설정
+            const char* resolution_names[] = {
+                "Last Write Wins",
+                "First Write Wins",
+                "Merge Changes",
+                "User Decision"
+            };
+
+            int current_resolution = static_cast<int>(conflict_resolution_);
+            if (ImGui::Combo("Conflict Resolution", &current_resolution, resolution_names, 4)) {
+                conflict_resolution_ = static_cast<ConflictResolution>(current_resolution);
+            }
+
+            // 수동 동기화 트리거
+            if (ImGui::Button("Force Sync All")) {
+                TriggerFullSync();
+            }
+
+            ImGui::SameLine();
+            if (ImGui::Button("Clear Queue")) {
+                ClearEventQueue();
+            }
+        }
+        ImGui::End();
+    }
+
+private:
+    void ProcessEvents() {
+        while (running_) {
+            std::unique_lock<std::mutex> lock(queue_mutex_);
+            queue_cv_.wait(lock, [this] { return !event_queue_.empty() || !running_; });
+
+            if (!running_) break;
+
+            if (!event_queue_.empty()) {
+                DataChangeEvent event = event_queue_.front();
+                event_queue_.pop();
+                lock.unlock();
+
+                // 이벤트 처리
+                ProcessSingleEvent(event);
+            }
+        }
+    }
+
+    void ProcessSingleEvent(const DataChangeEvent& event) {
+        std::lock_guard<std::mutex> lock(handlers_mutex_);
+
+        for (const auto& handler : event_handlers_) {
+            try {
+                handler(event);
+            } catch (const std::exception& e) {
+                // 로그 기록
+            }
+        }
+    }
+
+    void TriggerFullSync() {
+        // 전체 데이터 동기화 로직
+        DataChangeEvent sync_event;
+        sync_event.entity_type = "system";
+        sync_event.entity_id = "full_sync";
+        sync_event.change_type = "sync";
+        sync_event.timestamp = std::chrono::system_clock::now();
+
+        PublishChange(sync_event);
+    }
+
+    void ClearEventQueue() {
+        std::lock_guard<std::mutex> lock(queue_mutex_);
+        while (!event_queue_.empty()) {
+            event_queue_.pop();
+        }
+    }
+};
+
+// 데이터 엔티티 베이스 클래스
+class SyncableEntity {
+private:
+    std::string entity_id_;
+    std::string entity_type_;
+    std::chrono::time_point<std::chrono::system_clock> last_modified_;
+    uint64_t version_;
+
+protected:
+    DataSynchronizationManager* sync_manager_;
+
+public:
+    SyncableEntity(const std::string& type, const std::string& id, DataSynchronizationManager* sync_manager)
+        : entity_type_(type), entity_id_(id), sync_manager_(sync_manager), version_(0) {
+        last_modified_ = std::chrono::system_clock::now();
+    }
+
+    virtual ~SyncableEntity() = default;
+
+    void MarkModified() {
+        last_modified_ = std::chrono::system_clock::now();
+        version_++;
+
+        if (sync_manager_) {
+            DataChangeEvent event;
+            event.entity_type = entity_type_;
+            event.entity_id = entity_id_;
+            event.change_type = "update";
+            event.data = ToJson();
+            event.timestamp = last_modified_;
+
+            sync_manager_->PublishChange(event);
+        }
+    }
+
+    virtual nlohmann::json ToJson() const = 0;
+    virtual void FromJson(const nlohmann::json& data) = 0;
+
+    const std::string& GetEntityId() const { return entity_id_; }
+    const std::string& GetEntityType() const { return entity_type_; }
+    uint64_t GetVersion() const { return version_; }
+    auto GetLastModified() const { return last_modified_; }
+};
+
+// 예시: 동기화 가능한 센서 데이터
+class SyncableSensorData : public SyncableEntity {
+private:
+    float temperature_;
+    float pressure_;
+    float flow_rate_;
+    bool is_active_;
+
+public:
+    SyncableSensorData(const std::string& sensor_id, DataSynchronizationManager* sync_manager)
+        : SyncableEntity("sensor_data", sensor_id, sync_manager)
+        , temperature_(0.0f), pressure_(0.0f), flow_rate_(0.0f), is_active_(false) {}
+
+    void SetTemperature(float temp) {
+        if (temperature_ != temp) {
+            temperature_ = temp;
+            MarkModified();
+        }
+    }
+
+    void SetPressure(float press) {
+        if (pressure_ != press) {
+            pressure_ = press;
+            MarkModified();
+        }
+    }
+
+    void SetFlowRate(float flow) {
+        if (flow_rate_ != flow) {
+            flow_rate_ = flow;
+            MarkModified();
+        }
+    }
+
+    void SetActive(bool active) {
+        if (is_active_ != active) {
+            is_active_ = active;
+            MarkModified();
+        }
+    }
+
+    nlohmann::json ToJson() const override {
+        nlohmann::json json;
+        json["temperature"] = temperature_;
+        json["pressure"] = pressure_;
+        json["flow_rate"] = flow_rate_;
+        json["is_active"] = is_active_;
+        json["version"] = GetVersion();
+        return json;
+    }
+
+    void FromJson(const nlohmann::json& data) override {
+        if (data.contains("temperature")) temperature_ = data["temperature"];
+        if (data.contains("pressure")) pressure_ = data["pressure"];
+        if (data.contains("flow_rate")) flow_rate_ = data["flow_rate"];
+        if (data.contains("is_active")) is_active_ = data["is_active"];
+    }
+
+    float GetTemperature() const { return temperature_; }
+    float GetPressure() const { return pressure_; }
+    float GetFlowRate() const { return flow_rate_; }
+    bool IsActive() const { return is_active_; }
+};
+
+} // namespace SemiconductorHMI::Sync
+```
+
+---
+
+## 🎯 **최종 정리 및 심화 학습 방향**
+
+### 8. Week 12 완성도 검증 및 확장 방안
+
+#### 8.1 학습 내용 체크리스트
+- ✅ 플러그인 아키텍처 설계 및 구현
+- ✅ 동적 라이브러리 로딩 시스템
+- ✅ 고급 데이터 시각화 엔진
+- ✅ 멀티스레딩 렌더링 시스템
+- ✅ 국제화 및 접근성 지원
+- ✅ 외부 시스템 통합 (MQTT, OPC-UA)
+- ✅ 커스텀 렌더링 파이프라인
+- ✅ 성능 프로파일링 도구
+- ✅ 고급 메모리 관리 시스템
+- ✅ 분산 시스템 연동
+- ✅ 실시간 데이터 동기화
+
+#### 8.2 실무 적용을 위한 추가 고려사항
+
+**보안 강화**
+```cpp
+// 보안 관련 추가 구현 방향
+namespace SemiconductorHMI::Security {
+    class SecurityManager {
+        // - SSL/TLS 통신 암호화
+        // - 사용자 인증 및 권한 관리
+        // - 데이터 무결성 검증
+        // - 감사 로그 시스템
+        // - 침입 탐지 시스템
+    };
+}
+```
+
+**배포 및 운영**
+```cpp
+namespace SemiconductorHMI::Deployment {
+    class DeploymentManager {
+        // - 자동 업데이트 시스템
+        // - 설정 관리 (환경별)
+        // - 헬스 체크 및 모니터링
+        // - 로그 수집 및 분석
+        // - 장애 복구 시스템
+    };
+}
+```
+
+**확장성 고려사항**
+- 수평적 확장 (Load Balancing)
+- 데이터베이스 샤딩
+- 캐싱 전략 (Redis, Memcached)
+- 메시지 큐 시스템 (RabbitMQ, Apache Kafka)
+- 클라우드 네이티브 아키텍처 (Kubernetes, Docker)
 - 실제 반도체 팹 환경 시뮬레이션
 - 최종 프로젝트 발표 및 평가
