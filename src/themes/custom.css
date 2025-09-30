@@ -56,6 +56,15 @@ body.theme-custom .reveal {
     font-size: 1.1em !important;
     line-height: 1.6 !important;
     padding: 1.5rem !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    max-width: 100%;
+}
+
+.theme-custom .reveal pre {
+    max-width: 100%;
+    overflow-x: auto;
 }
 
 .theme-custom .reveal code {
@@ -191,6 +200,35 @@ body.theme-custom .reveal {
 }
 
 /* Enhanced two-column layout */
+.reveal .grid {
+    display: grid;
+}
+
+.reveal .grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.reveal .gap-8 {
+    gap: 2rem;
+}
+
+.reveal .grid > div {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    hyphens: auto;
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+.reveal .grid > div p,
+.reveal .grid > div li,
+.reveal .grid > div ul,
+.reveal .grid > div ol {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    max-width: 100%;
+}
+
 .theme-custom .two-column {
     gap: 2rem;
 }

@@ -430,7 +430,7 @@
 
 ### HMI 전문 연구
 1. **Sheridan, T.B. (2002)**. "Humans and automation: System design and research issues." John Wiley & Sons.
-   - ISBN: 9780471949831
+   - ISBN: 9780471234289
    - 자동화 시스템에서 인간의 역할 분석
 
 2. **Vicente, K.J. (1999)**. "Cognitive work analysis: Toward safe, productive, and healthy computer-based work." Lawrence Erlbaum.
@@ -457,23 +457,6 @@
 4. **ANSI/ISA-101.01-2015**: *Human Machine Interfaces for Process Automation Systems*
    - 공정 자동화 시스템 HMI 표준
    - 접근: [ISA Standards](https://www.isa.org/standards)
-
-### 반도체 HMI 최신 연구
-1. **Zhang, T., Liu, Y., Wang, S. (2023)**. "AI-assisted HMI design optimization for semiconductor manufacturing environments." *IEEE Transactions on Semiconductor Manufacturing*, 36(2), 234-245.
-   - DOI: [10.1109/TSM.2023.1234567](https://doi.org/10.1109/TSM.2023.1234567)
-   - 인공지능 기반 HMI 설계 최적화
-
-2. **Kim, S.H., Lee, J.W., Park, M.K. (2022)**. "Cognitive load assessment in cleanroom environments using physiological measures." *Applied Ergonomics*, 98, 103-115.
-   - DOI: [10.1016/j.apergo.2021.103615](https://doi.org/10.1016/j.apergo.2021.103615)
-   - 클린룸 환경 인지부하 측정 연구
-
-3. **Johnson, R.A., Chen, L., Garcia, M. (2024)**. "Real-time situation awareness measurement in semiconductor fab operations." *Human Factors*, 66(1), 78-92.
-   - DOI: [10.1177/0018720823123456](https://doi.org/10.1177/0018720823123456)
-   - 반도체 FAB 상황인식 실시간 측정
-
-4. **Nakamura, H., Tanaka, Y., Suzuki, K. (2023)**. "Adaptive HMI systems for semiconductor equipment operators: A neurophysiological approach." *International Journal of Human-Computer Studies*, 171, 102987.
-   - DOI: [10.1016/j.ijhcs.2022.102987](https://doi.org/10.1016/j.ijhcs.2022.102987)
-   - 신경생리학적 접근의 적응형 HMI
 
 ### 신호검출이론 및 통계적 방법
 1. **Green, D.M., Swets, J.A. (1966)**. *Signal detection theory and psychophysics*. John Wiley & Sons.
