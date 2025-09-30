@@ -49,9 +49,9 @@ body.theme-custom .reveal {
 .theme-custom .reveal pre code {
     background: #2d3748 !important;
     color: #e2e8f0 !important;
-    border: 1px solid #4a5568;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    border: 1px solid #4a5568 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
     font-family: 'Noto Sans KR', 'NotoSansKR-Fallback', 'Consolas', 'Monaco', 'Courier New', monospace !important;
     font-size: 1.1em !important;
     line-height: 1.6 !important;
@@ -60,6 +60,37 @@ body.theme-custom .reveal {
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
     max-width: 100%;
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
+/* Remove any underlines from code elements */
+.theme-custom .reveal pre code *,
+.theme-custom .reveal code,
+.theme-custom .reveal pre {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
+/* Line numbers support */
+.reveal pre code[data-line-numbers] {
+    counter-reset: line;
+}
+
+.reveal pre code[data-line-numbers] .line-number {
+    counter-increment: line;
+    display: inline-block;
+    width: 3em;
+    text-align: right;
+    padding-right: 1em;
+    margin-right: 1em;
+    color: #6b7280;
+    border-right: 1px solid #4a5568;
+    user-select: none;
+}
+
+.reveal pre code[data-line-numbers] .line-number::before {
+    content: counter(line);
 }
 
 .theme-custom .reveal pre {

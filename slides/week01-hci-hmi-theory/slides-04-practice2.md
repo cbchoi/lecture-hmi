@@ -31,32 +31,27 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```csharp {1-25}
-1  using UnityEngine;
-2  using UnityEngine.XR;
-3
-4  public class CleanroomSimulation : MonoBehaviour
-5  {
-6      [Header("Environmental Settings")]
-7      public Light yellowLight;
-8      public AudioSource hvacSound;
-9      public ParticleSystem airFlow;
-10
-11     [Header("Equipment Models")]
-12     public GameObject[] equipmentPrefabs;
-13     public Transform[] equipmentPositions;
-14
-15     private float currentNoiseLevel = 65f;
-16     private float ambientTemperature = 22.5f;
-17     private float relativeHumidity = 45f;
-18
-19     void Start()
-20     {
-21         SetupCleanroomEnvironment();
-22         InitializeEquipment();
-23         StartEnvironmentalMonitoring();
-24     }
-25
+```csharp [1-25]
+using UnityEngine;
+using UnityEngine.XR;
+public class CleanroomSimulation : MonoBehaviour
+{
+[Header("Environmental Settings")]
+public Light yellowLight;
+public AudioSource hvacSound;
+public ParticleSystem airFlow;
+[Header("Equipment Models")]
+public GameObject[] equipmentPrefabs;
+public Transform[] equipmentPositions;
+private float currentNoiseLevel = 65f;
+private float ambientTemperature = 22.5f;
+private float relativeHumidity = 45f;
+void Start()
+{
+SetupCleanroomEnvironment();
+InitializeEquipment();
+StartEnvironmentalMonitoring();
+}
 ```
 
 </div>
@@ -87,32 +82,28 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```csharp {26-50}
-26     void SetupCleanroomEnvironment()
-27     {
-28         // 황색광 설정 (585nm 근사)
-29         yellowLight.color = new Color(1f, 0.8f, 0.3f, 1f);
-30         yellowLight.intensity = 1.2f;
-31         yellowLight.shadows = LightShadows.Soft;
-32
-33         // HVAC 시스템 소음
-34         hvacSound.clip = Resources.Load<AudioClip>("HVACSound");
-35         hvacSound.volume = 0.3f;
-36         hvacSound.loop = true;
-37         hvacSound.Play();
-38
-39         // 층류 공기흐름 시뮬레이션
-40         var main = airFlow.main;
-41         main.startLifetime = 5f;
-42         main.startSpeed = 0.5f;
-43         main.maxParticles = 1000;
-44
-45         var shape = airFlow.shape;
-46         shape.shapeType = ParticleSystemShapeType.Box;
-47         shape.scale = new Vector3(20f, 0.1f, 15f);
-48
-49         var velocityOverLifetime = airFlow.velocityOverLifetime;
-50         velocityOverLifetime.enabled = true;
+```csharp [26-50]
+void SetupCleanroomEnvironment()
+{
+// 황색광 설정 (585nm 근사)
+yellowLight.color = new Color(1f, 0.8f, 0.3f, 1f);
+yellowLight.intensity = 1.2f;
+yellowLight.shadows = LightShadows.Soft;
+// HVAC 시스템 소음
+hvacSound.clip = Resources.Load<AudioClip>("HVACSound");
+hvacSound.volume = 0.3f;
+hvacSound.loop = true;
+hvacSound.Play();
+// 층류 공기흐름 시뮬레이션
+var main = airFlow.main;
+main.startLifetime = 5f;
+main.startSpeed = 0.5f;
+main.maxParticles = 1000;
+var shape = airFlow.shape;
+shape.shapeType = ParticleSystemShapeType.Box;
+shape.scale = new Vector3(20f, 0.1f, 15f);
+var velocityOverLifetime = airFlow.velocityOverLifetime;
+velocityOverLifetime.enabled = true;
 ```
 
 </div>
@@ -144,32 +135,29 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```csharp {51-75}
-51         velocityOverLifetime.space = ParticleSystemSimulationSpace.World;
-52         velocityOverLifetime.y = new ParticleSystem.MinMaxCurve(-0.5f);
-53     }
-54
-55     void InitializeEquipment()
-56     {
-57         for(int i = 0; i < equipmentPrefabs.Length; i++)
-58         {
-59             if(i < equipmentPositions.Length)
-60             {
-61                 GameObject equipment = Instantiate(equipmentPrefabs[i],
-62                                                  equipmentPositions[i].position,
-63                                                  equipmentPositions[i].rotation);
-64
-65                 // HMI 패널 설정
-66                 HMIPanel hmiPanel = equipment.GetComponentInChildren<HMIPanel>();
-67                 if(hmiPanel != null)
-68                 {
-69                     hmiPanel.Initialize(GetEquipmentParameters(i));
-70                 }
-71             }
-72         }
-73     }
-74
-75     EquipmentParameters GetEquipmentParameters(int equipmentIndex)
+```csharp [51-75]
+velocityOverLifetime.space = ParticleSystemSimulationSpace.World;
+velocityOverLifetime.y = new ParticleSystem.MinMaxCurve(-0.5f);
+}
+void InitializeEquipment()
+{
+for(int i = 0; i < equipmentPrefabs.Length; i++)
+{
+if(i < equipmentPositions.Length)
+{
+GameObject equipment = Instantiate(equipmentPrefabs[i],
+equipmentPositions[i].position,
+equipmentPositions[i].rotation);
+// HMI 패널 설정
+HMIPanel hmiPanel = equipment.GetComponentInChildren<HMIPanel>();
+if(hmiPanel != null)
+{
+hmiPanel.Initialize(GetEquipmentParameters(i));
+}
+}
+}
+}
+EquipmentParameters GetEquipmentParameters(int equipmentIndex)
 ```
 
 </div>
@@ -200,32 +188,30 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```csharp {76-100}
-76     {
-77         switch(equipmentIndex)
-78         {
-79             case 0: // Stepper
-80                 return new EquipmentParameters
-81                 {
-82                     name = "ASML PAS 5500",
-83                     throughput = 150, // WPH
-84                     overlayAccuracy = 2.0f, // nm
-85                     cdUniformity = 1.5f // nm
-86                 };
-87
-88             case 1: // CVD
-89                 return new EquipmentParameters
-90                 {
-91                     name = "AMAT Centura",
-92                     temperature = 450f, // Celsius
-93                     pressure = 10f, // Torr
-94                     gasFlow = 100f // sccm
-95                 };
-96
-97             default:
-98                 return new EquipmentParameters();
-99         }
-100    }
+```csharp [76-100]
+{
+switch(equipmentIndex)
+{
+case 0: // Stepper
+return new EquipmentParameters
+{
+name = "ASML PAS 5500",
+throughput = 150, // WPH
+overlayAccuracy = 2.0f, // nm
+cdUniformity = 1.5f // nm
+};
+case 1: // CVD
+return new EquipmentParameters
+{
+name = "AMAT Centura",
+temperature = 450f, // Celsius
+pressure = 10f, // Torr
+gasFlow = 100f // sccm
+};
+default:
+return new EquipmentParameters();
+}
+}
 ```
 
 </div>
@@ -258,32 +244,28 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```csharp {101-125}
-101    void StartEnvironmentalMonitoring()
-102    {
-103        InvokeRepeating("UpdateEnvironmentalData", 1f, 1f);
-104    }
-105
-106    void UpdateEnvironmentalData()
-107    {
-108        // 환경 데이터 시뮬레이션 (정규분포 노이즈 추가)
-109        ambientTemperature = 22.5f + Random.Range(-0.05f, 0.05f);
-110        relativeHumidity = 45f + Random.Range(-0.5f, 0.5f);
-111        currentNoiseLevel = 65f + Random.Range(-2f, 2f);
-112
-113        // UI 업데이트
-114        UpdateEnvironmentalDisplay();
-115
-116        // 임계값 체크
-117        CheckEnvironmentalAlarms();
-118    }
-119
-120    void CheckEnvironmentalAlarms()
-121    {
-122        if(ambientTemperature < 22.4f || ambientTemperature > 22.6f)
-123        {
-124            TriggerAlarm("Temperature out of range: " + ambientTemperature.ToString("F2") + "°C");
-125        }
+```csharp [101-125]
+void StartEnvironmentalMonitoring()
+{
+InvokeRepeating("UpdateEnvironmentalData", 1f, 1f);
+}
+void UpdateEnvironmentalData()
+{
+// 환경 데이터 시뮬레이션 (정규분포 노이즈 추가)
+ambientTemperature = 22.5f + Random.Range(-0.05f, 0.05f);
+relativeHumidity = 45f + Random.Range(-0.5f, 0.5f);
+currentNoiseLevel = 65f + Random.Range(-2f, 2f);
+// UI 업데이트
+UpdateEnvironmentalDisplay();
+// 임계값 체크
+CheckEnvironmentalAlarms();
+}
+void CheckEnvironmentalAlarms()
+{
+if(ambientTemperature < 22.4f || ambientTemperature > 22.6f)
+{
+TriggerAlarm("Temperature out of range: " + ambientTemperature.ToString("F2") + "°C");
+}
 ```
 
 </div>
@@ -316,31 +298,28 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```csharp {126-140}
-126
-127        if(relativeHumidity < 44f || relativeHumidity > 46f)
-128        {
-129            TriggerAlarm("Humidity out of range: " + relativeHumidity.ToString("F1") + "%");
-130        }
-131    }
-132
-133    void TriggerAlarm(string message)
-134    {
-135        AlarmManager.Instance.ShowAlarm(message, AlarmPriority.Medium);
-136    }
-137 }
-138
-139 [System.Serializable]
-140 public class EquipmentParameters
-141 {
-142     public string name;
-143     public float throughput;
-144     public float overlayAccuracy;
-145     public float cdUniformity;
-146     public float temperature;
-147     public float pressure;
-148     public float gasFlow;
-149 }
+```csharp [126-140]
+if(relativeHumidity < 44f || relativeHumidity > 46f)
+{
+TriggerAlarm("Humidity out of range: " + relativeHumidity.ToString("F1") + "%");
+}
+}
+void TriggerAlarm(string message)
+{
+AlarmManager.Instance.ShowAlarm(message, AlarmPriority.Medium);
+}
+}
+[System.Serializable]
+public class EquipmentParameters
+{
+public string name;
+public float throughput;
+public float overlayAccuracy;
+public float cdUniformity;
+public float temperature;
+public float pressure;
+public float gasFlow;
+}
 ```
 
 </div>
@@ -366,7 +345,9 @@
 </div>
 </div>
 
-#### 체험 시나리오
+---
+
+### 체험 시나리오
 1. **진입 절차** (10분)
    - 에어샤워 체험
    - 클린슈트 착용 시뮬레이션

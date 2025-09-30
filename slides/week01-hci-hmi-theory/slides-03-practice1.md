@@ -26,14 +26,13 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```python {1-7}
-1  for 시퀀스_길이 in [3, 5, 7, 9, 11]:
-2      for 시행 in range(1, 11):
-3          숫자_시퀀스_제시(길이=시퀀스_길이, 제시_시간=1초)
-4          대기_시간(2초)
-5          사용자_입력_대기()
-6          정확도_기록(시퀀스_길이, 시행, 정답_여부)
-7
+```python [1-7]
+for 시퀀스_길이 in [3, 5, 7, 9, 11]:
+for 시행 in range(1, 11):
+숫자_시퀀스_제시(길이=시퀀스_길이, 제시_시간=1초)
+대기_시간(2초)
+사용자_입력_대기()
+정확도_기록(시퀀스_길이, 시행, 정답_여부)
 ```
 
 </div>
@@ -85,32 +84,30 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```javascript {1-25}
-1  // Fitts' Law 실험 구현
-2  class FittsLawExperiment {
-3      constructor() {
-4          this.canvas = document.getElementById('experimentCanvas');
-5          this.ctx = this.canvas.getContext('2d');
-6          this.results = [];
-7          this.currentTrial = 0;
-8          this.conditions = this.generateConditions();
-9      }
-10
-11     generateConditions() {
-12         const distances = [100, 200, 400];
-13         const widths = [20, 40, 80];
-14         let conditions = [];
-15
-16         for(let d of distances) {
-17             for(let w of widths) {
-18                 conditions.push({
-19                     distance: d,
-20                     width: w,
-21                     indexOfDifficulty: Math.log2(d/w + 1)
-22                 });
-23             }
-24         }
-25         return this.shuffleArray(conditions);
+```javascript [1-25]
+// Fitts' Law 실험 구현
+class FittsLawExperiment {
+constructor() {
+this.canvas = document.getElementById('experimentCanvas');
+this.ctx = this.canvas.getContext('2d');
+this.results = [];
+this.currentTrial = 0;
+this.conditions = this.generateConditions();
+}
+generateConditions() {
+const distances = [100, 200, 400];
+const widths = [20, 40, 80];
+let conditions = [];
+for(let d of distances) {
+for(let w of widths) {
+conditions.push({
+distance: d,
+width: w,
+indexOfDifficulty: Math.log2(d/w + 1)
+});
+}
+}
+return this.shuffleArray(conditions);
 ```
 
 </div>
@@ -138,32 +135,26 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```javascript {26-50}
-26     startTrial() {
-27         const condition = this.conditions[this.currentTrial];
-28         this.startTime = performance.now();
-29
-30         // 시작점과 목표점 그리기
-31         this.drawStartPoint(50, 300);
-32         this.drawTarget(50 + condition.distance, 300, condition.width);
-33
-34         this.canvas.addEventListener('click', this.handleClick.bind(this));
-35     }
-36
-37     handleClick(event) {
-38         const endTime = performance.now();
-39         const rect = this.canvas.getBoundingClientRect();
-40         const x = event.clientX - rect.left;
-41         const y = event.clientY - rect.top;
-42
-43         const condition = this.conditions[this.currentTrial];
-44         const targetX = 50 + condition.distance;
-45         const targetY = 300;
-46
-47         const hit = this.isWithinTarget(x, y, targetX, targetY, condition.width);
-48         const movementTime = endTime - this.startTime;
-49
-50         this.results.push({
+```javascript [26-50]
+startTrial() {
+const condition = this.conditions[this.currentTrial];
+this.startTime = performance.now();
+// 시작점과 목표점 그리기
+this.drawStartPoint(50, 300);
+this.drawTarget(50 + condition.distance, 300, condition.width);
+this.canvas.addEventListener('click', this.handleClick.bind(this));
+}
+handleClick(event) {
+const endTime = performance.now();
+const rect = this.canvas.getBoundingClientRect();
+const x = event.clientX - rect.left;
+const y = event.clientY - rect.top;
+const condition = this.conditions[this.currentTrial];
+const targetX = 50 + condition.distance;
+const targetY = 300;
+const hit = this.isWithinTarget(x, y, targetX, targetY, condition.width);
+const movementTime = endTime - this.startTime;
+this.results.push({
 ```
 
 </div>
@@ -193,32 +184,28 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```javascript {51-75}
-51         trial: this.currentTrial + 1,
-52         distance: condition.distance,
-53         width: condition.width,
-54         indexOfDifficulty: condition.indexOfDifficulty,
-55         movementTime: movementTime,
-56         hit: hit,
-57         actualX: x,
-58         actualY: y
-59     });
-60
-61     this.nextTrial();
-62 }
-63
-64 calculateResults() {
-65     const validTrials = this.results.filter(r => r.hit);
-66
-67     // 회귀분석: MT = a + b * ID
-68     const xValues = validTrials.map(r => r.indexOfDifficulty);
-69     const yValues = validTrials.map(r => r.movementTime);
-70
-71     const n = xValues.length;
-72     const sumX = xValues.reduce((a, b) => a + b, 0);
-73     const sumY = yValues.reduce((a, b) => a + b, 0);
-74     const sumXY = xValues.reduce((sum, x, i) => sum + x * yValues[i], 0);
-75     const sumXX = xValues.reduce((sum, x) => sum + x * x, 0);
+```javascript [51-75]
+trial: this.currentTrial + 1,
+distance: condition.distance,
+width: condition.width,
+indexOfDifficulty: condition.indexOfDifficulty,
+movementTime: movementTime,
+hit: hit,
+actualX: x,
+actualY: y
+});
+this.nextTrial();
+}
+calculateResults() {
+const validTrials = this.results.filter(r => r.hit);
+// 회귀분석: MT = a + b * ID
+const xValues = validTrials.map(r => r.indexOfDifficulty);
+const yValues = validTrials.map(r => r.movementTime);
+const n = xValues.length;
+const sumX = xValues.reduce((a, b) => a + b, 0);
+const sumY = yValues.reduce((a, b) => a + b, 0);
+const sumXY = xValues.reduce((sum, x, i) => sum + x * yValues[i], 0);
+const sumXX = xValues.reduce((sum, x) => sum + x * x, 0);
 ```
 
 </div>
@@ -247,22 +234,20 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```javascript {76-90}
-76     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-77     const intercept = (sumY - slope * sumX) / n;
-78
-79     return {
-80         a: intercept,
-81         b: slope,
-82         equation: `MT = ${intercept.toFixed(2)} + ${slope.toFixed(2)} * ID`,
-83         rSquared: this.calculateRSquared(xValues, yValues, slope, intercept)
-84     };
-85 }
-86 }
-87
-88 // 데이터 분석
-89 - **회귀식 도출**: MT = a + b × ID
-90 - **개인차 분석**: 표준편차, 변이계수
+```javascript [76-90]
+const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+const intercept = (sumY - slope * sumX) / n;
+return {
+a: intercept,
+b: slope,
+equation: `MT = ${intercept.toFixed(2)} + ${slope.toFixed(2)} * ID`,
+rSquared: this.calculateRSquared(xValues, yValues, slope, intercept)
+};
+}
+}
+// 데이터 분석
+- **회귀식 도출**: MT = a + b × ID
+- **개인차 분석**: 표준편차, 변이계수
 ```
 
 </div>

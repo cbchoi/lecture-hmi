@@ -44,6 +44,9 @@
 
 ### Figma 프로토타입 실습
 
+<div class="grid grid-cols-2 gap-8">
+<div>
+
 #### 단계 1: 정보 아키텍처 (15분)
 ```
 메인 화면
@@ -64,26 +67,30 @@
     └── 알람 히스토리
 ```
 
----
+</div>
+<div>
 
-### 프로토타입 설계 단계
-
-**단계 2: 와이어프레임** (20분)
+#### 단계 2: 와이어프레임 (20분)
 - 스케치 기반 레이아웃
 - 정보 우선순위 설정
 - 시각적 계층 구조 설계
 
-**단계 3: 상세 설계** (30분)
+#### 단계 3: 상세 설계 (30분)
 - 색상 및 타이포그래피
 - 인터랙션 디자인
 - 반응형 레이아웃
+
+</div>
+</div>
+
+---
 
 ### CSS 스타일 가이드 - Part 1
 
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```css {1-130}
+```css [1-130]
 /* HMI 스타일 가이드 */
 :root {
     /* 색상 팔레트 (황색광 환경 고려) */
@@ -255,7 +262,7 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```css {1-62}
+```css [1-62]
 /* SEMI E95 준수 스타일 */
 .semi-compliant-display {
     /* 4.1.1 최소 명도 대비 4:1 */
@@ -354,7 +361,7 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```css {1-21}
+```css [1-21]
 ---
 - **Grid 영역 할당**: 각 파라미터 타입별 위치 지정
 - **값 표시**:
@@ -372,7 +379,7 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```css {1-25}
+```css [1-25]
 ---
 </div>
 <div>
@@ -396,7 +403,7 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```css {1-25}
+```css [1-25]
 ---
 </div>
 <div>
@@ -419,7 +426,7 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```css {1-23}
+```css [1-23]
 ---
 </div>
 <div>
@@ -442,36 +449,33 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```javascript {1-25}
-1  // HMI 인터랙션 로직
-2  class EtchEquipmentHMI {
-3      constructor() {
-4          this.currentStep = 1;
-5          this.totalSteps = 15;
-6          this.isRunning = false;
-7          this.parameters = {
-8              rfPower: 0,
-9              biasPower: 0,
-10             pressure: 0,
-11             sf6Flow: 0,
-12             o2Flow: 0,
-13             heFlow: 0,
-14             chuckTemp: 20,
-15             electrodeTemp: 20
-16         };
+```javascript [1-25]
+// HMI 인터랙션 로직
+class EtchEquipmentHMI {
+constructor() {
+this.currentStep = 1;
+this.totalSteps = 15;
+this.isRunning = false;
+this.parameters = {
+rfPower: 0,
+biasPower: 0,
+pressure: 0,
+sf6Flow: 0,
+o2Flow: 0,
+heFlow: 0,
+chuckTemp: 20,
+electrodeTemp: 20
+};
 ---
-17
-18         this.alarms = [];
-19         this.initializeEventListeners();
-20         this.startDataUpdating();
-21     }
-22
-23     initializeEventListeners() {
-24         document.getElementById('startBtn').addEventListener('click', () => {
-25             if(this.validateStartConditions()) {
+this.alarms = [];
+this.initializeEventListeners();
+this.startDataUpdating();
+}
+initializeEventListeners() {
+document.getElementById('startBtn').addEventListener('click', () => {
+if(this.validateStartConditions()) {
 ```
 
----
 </div>
 <div>
 
@@ -500,32 +504,28 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```javascript {26-50}
-26                 this.startProcess();
-27             }
-28         });
-29
-30         document.getElementById('stopBtn').addEventListener('click', () => {
-31             this.stopProcess();
-32         });
-33
-34         document.getElementById('emergencyBtn').addEventListener('click', () => {
-35             this.emergencyStop();
-36         });
-37     }
-38
-39     validateStartConditions() {
-40         const checks = [
-41             { condition: this.parameters.pressure < 1, message: "Chamber pressure too high" },
-42             { condition: this.parameters.chuckTemp < -25 || this.parameters.chuckTemp > 85, message: "Chuck temperature out of range" },
-43             { condition: this.alarms.some(a => a.priority === 'critical'), message: "Critical alarms present" }
-44         ];
-45
-46         for(let check of checks) {
-47             if(check.condition) {
-48                 this.showDialog('Start Validation Failed', check.message);
-49                 return false;
-50             }
+```javascript [26-50]
+this.startProcess();
+}
+});
+document.getElementById('stopBtn').addEventListener('click', () => {
+this.stopProcess();
+});
+document.getElementById('emergencyBtn').addEventListener('click', () => {
+this.emergencyStop();
+});
+}
+validateStartConditions() {
+const checks = [
+{ condition: this.parameters.pressure < 1, message: "Chamber pressure too high" },
+{ condition: this.parameters.chuckTemp < -25 || this.parameters.chuckTemp > 85, message: "Chuck temperature out of range" },
+{ condition: this.alarms.some(a => a.priority === 'critical'), message: "Critical alarms present" }
+];
+for(let check of checks) {
+if(check.condition) {
+this.showDialog('Start Validation Failed', check.message);
+return false;
+}
 ```
 
 </div>
@@ -556,35 +556,29 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```javascript {51-75}
-51         }
-52
-53         return true;
-54     }
-55
-56     startProcess() {
-57         this.isRunning = true;
-58         this.currentStep = 1;
-59         document.getElementById('processStatus').textContent = 'Running';
-60         document.getElementById('processStatus').className = 'status-running';
-61
-62         // 레시피 실행 시뮬레이션
-63         this.executeRecipe();
-64     }
-65
-66     executeRecipe() {
-67         const recipe = [
-68             { step: 1, rfPower: 100, pressure: 10, sf6Flow: 50, duration: 30 },
-69             { step: 2, rfPower: 500, pressure: 15, sf6Flow: 100, duration: 120 },
-70             { step: 3, rfPower: 1000, pressure: 20, sf6Flow: 150, duration: 180 },
-71             // ... 추가 스텝들
-72         ];
-73
-74         if(this.currentStep <= recipe.length && this.isRunning) {
-75             const currentRecipeStep = recipe[this.currentStep - 1];
+```javascript [51-75]
+}
+return true;
+}
+startProcess() {
+this.isRunning = true;
+this.currentStep = 1;
+document.getElementById('processStatus').textContent = 'Running';
+document.getElementById('processStatus').className = 'status-running';
+// 레시피 실행 시뮬레이션
+this.executeRecipe();
+}
+executeRecipe() {
+const recipe = [
+{ step: 1, rfPower: 100, pressure: 10, sf6Flow: 50, duration: 30 },
+{ step: 2, rfPower: 500, pressure: 15, sf6Flow: 100, duration: 120 },
+{ step: 3, rfPower: 1000, pressure: 20, sf6Flow: 150, duration: 180 },
+// ... 추가 스텝들
+];
+if(this.currentStep <= recipe.length && this.isRunning) {
+const currentRecipeStep = recipe[this.currentStep - 1];
 ```
 
----
 </div>
 <div>
 
@@ -613,35 +607,30 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```javascript {76-100}
-76             this.executeStep(currentRecipeStep);
-77         }
-78     }
-79
-80     executeStep(step) {
-81         const startTime = Date.now();
-82         const updateInterval = 100; // 100ms 업데이트
-83
-84         const stepExecution = setInterval(() => {
-85             const elapsed = Date.now() - startTime;
-86             const progress = Math.min(elapsed / (step.duration * 1000), 1);
-87
-88             // 파라미터 점진적 변화
-89             this.parameters.rfPower = this.interpolate(
-90                 this.parameters.rfPower, step.rfPower, progress
-91             );
-92             this.parameters.pressure = this.interpolate(
-93                 this.parameters.pressure, step.pressure, progress
-94             );
-95             this.parameters.sf6Flow = this.interpolate(
-96                 this.parameters.sf6Flow, step.sf6Flow, progress
-97             );
-98
-99             // UI 업데이트
-100            this.updateParameterDisplay();
+```javascript [76-100]
+this.executeStep(currentRecipeStep);
+}
+}
+executeStep(step) {
+const startTime = Date.now();
+const updateInterval = 100; // 100ms 업데이트
+const stepExecution = setInterval(() => {
+const elapsed = Date.now() - startTime;
+const progress = Math.min(elapsed / (step.duration * 1000), 1);
+// 파라미터 점진적 변화
+this.parameters.rfPower = this.interpolate(
+this.parameters.rfPower, step.rfPower, progress
+);
+this.parameters.pressure = this.interpolate(
+this.parameters.pressure, step.pressure, progress
+);
+this.parameters.sf6Flow = this.interpolate(
+this.parameters.sf6Flow, step.sf6Flow, progress
+);
+// UI 업데이트
+this.updateParameterDisplay();
 ```
 
----
 </div>
 <div>
 
@@ -670,35 +659,30 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```javascript {101-125}
-101            this.updateProgressDisplay();
-102
-103            // 스텝 완료 체크
-104            if(progress >= 1) {
-105                clearInterval(stepExecution);
-106                this.currentStep++;
-107
-108                if(this.currentStep <= 15 && this.isRunning) {
-109                    setTimeout(() => this.executeRecipe(), 1000);
-110                } else {
-111                    this.completeProcess();
-112                }
-113            }
-114        }, updateInterval);
-115    }
-116
-117    interpolate(current, target, progress) {
-118        return current + (target - current) * progress;
-119    }
-120
-121    updateParameterDisplay() {
-122        document.getElementById('rfPower').textContent = Math.round(this.parameters.rfPower);
-123        document.getElementById('pressure').textContent = this.parameters.pressure.toFixed(1);
-124        document.getElementById('sf6Flow').textContent = Math.round(this.parameters.sf6Flow);
-125        // ... 다른 파라미터들
+```javascript [101-125]
+this.updateProgressDisplay();
+// 스텝 완료 체크
+if(progress >= 1) {
+clearInterval(stepExecution);
+this.currentStep++;
+if(this.currentStep <= 15 && this.isRunning) {
+setTimeout(() => this.executeRecipe(), 1000);
+} else {
+this.completeProcess();
+}
+}
+}, updateInterval);
+}
+interpolate(current, target, progress) {
+return current + (target - current) * progress;
+}
+updateParameterDisplay() {
+document.getElementById('rfPower').textContent = Math.round(this.parameters.rfPower);
+document.getElementById('pressure').textContent = this.parameters.pressure.toFixed(1);
+document.getElementById('sf6Flow').textContent = Math.round(this.parameters.sf6Flow);
+// ... 다른 파라미터들
 ```
 
----
 </div>
 <div>
 
@@ -730,35 +714,30 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```javascript {126-150}
-126    }
-127
-128    updateProgressDisplay() {
-129        const progressPercent = (this.currentStep / 15) * 100;
-130        document.getElementById('progressBar').style.width = `${progressPercent}%`;
-131        document.getElementById('currentStep').textContent = this.currentStep;
-132        document.getElementById('totalSteps').textContent = '15';
-133    }
-134
-135    emergencyStop() {
-136        this.isRunning = false;
-137        this.parameters.rfPower = 0;
-138        this.parameters.biasPower = 0;
-139
-140        // 모든 가스 차단
-141        this.parameters.sf6Flow = 0;
-142        this.parameters.o2Flow = 0;
-143        this.parameters.heFlow = 0;
-144
-145        // 긴급정지 알람
-146        this.addAlarm({
-147            id: Date.now(),
-148            priority: 'critical',
-149            message: 'EMERGENCY STOP ACTIVATED',
-150            timestamp: new Date().toISOString(),
+```javascript [126-150]
+}
+updateProgressDisplay() {
+const progressPercent = (this.currentStep / 15) * 100;
+document.getElementById('progressBar').style.width = `${progressPercent}%`;
+document.getElementById('currentStep').textContent = this.currentStep;
+document.getElementById('totalSteps').textContent = '15';
+}
+emergencyStop() {
+this.isRunning = false;
+this.parameters.rfPower = 0;
+this.parameters.biasPower = 0;
+// 모든 가스 차단
+this.parameters.sf6Flow = 0;
+this.parameters.o2Flow = 0;
+this.parameters.heFlow = 0;
+// 긴급정지 알람
+this.addAlarm({
+id: Date.now(),
+priority: 'critical',
+message: 'EMERGENCY STOP ACTIVATED',
+timestamp: new Date().toISOString(),
 ```
 
----
 </div>
 <div>
 
@@ -787,35 +766,29 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```javascript {151-175}
-151            acknowledged: false
-152        });
-153
-154        document.getElementById('processStatus').textContent = 'Emergency Stop';
-155        document.getElementById('processStatus').className = 'status-emergency';
-156    }
-157
-158    addAlarm(alarm) {
-159        this.alarms.unshift(alarm);
-160        this.updateAlarmDisplay();
-161
-162        // 소리 알림 (실제 시스템에서는 하드웨어 부저)
-163        if(alarm.priority === 'critical') {
-164            this.playAlarmSound('critical');
-165        }
-166    }
-167
-168    updateAlarmDisplay() {
-169        const alarmContainer = document.getElementById('alarmList');
-170        alarmContainer.innerHTML = '';
-171
-172        this.alarms.slice(0, 10).forEach(alarm => {
-173            const alarmElement = document.createElement('div');
-174            const alarmElement.className = `alarm-item alarm-${alarm.priority}`;
-175            alarmElement.innerHTML = `
+```javascript [151-175]
+acknowledged: false
+});
+document.getElementById('processStatus').textContent = 'Emergency Stop';
+document.getElementById('processStatus').className = 'status-emergency';
+}
+addAlarm(alarm) {
+this.alarms.unshift(alarm);
+this.updateAlarmDisplay();
+// 소리 알림 (실제 시스템에서는 하드웨어 부저)
+if(alarm.priority === 'critical') {
+this.playAlarmSound('critical');
+}
+}
+updateAlarmDisplay() {
+const alarmContainer = document.getElementById('alarmList');
+alarmContainer.innerHTML = '';
+this.alarms.slice(0, 10).forEach(alarm => {
+const alarmElement = document.createElement('div');
+const alarmElement.className = `alarm-item alarm-${alarm.priority}`;
+alarmElement.innerHTML = `
 ```
 
----
 </div>
 <div>
 
@@ -846,22 +819,21 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```javascript {176-190}
-176                <div class="alarm-priority">${alarm.priority.toUpperCase()}</div>
-177                <div class="alarm-message">${alarm.message}</div>
-178                <div class="alarm-time">${new Date(alarm.timestamp).toLocaleTimeString()}</div>
-179                ${!alarm.acknowledged ? '<button class="ack-btn" onclick="acknowledgeAlarm(' + alarm.id + ')">ACK</button>' : ''}
-180            `;
-181            alarmContainer.appendChild(alarmElement);
-182        });
-183    }
-184 }
-185
-186 // 전역 함수
-187 function acknowledgeAlarm(alarmId) {
-188     const alarm = hmi.alarms.find(a => a.id === alarmId);
-189     if(alarm) {
-190         alarm.acknowledged = true;
+```javascript [176-190]
+<div class="alarm-priority">${alarm.priority.toUpperCase()}</div>
+<div class="alarm-message">${alarm.message}</div>
+<div class="alarm-time">${new Date(alarm.timestamp).toLocaleTimeString()}</div>
+${!alarm.acknowledged ? '<button class="ack-btn" onclick="acknowledgeAlarm(' + alarm.id + ')">ACK</button>' : ''}
+`;
+alarmContainer.appendChild(alarmElement);
+});
+}
+}
+// 전역 함수
+function acknowledgeAlarm(alarmId) {
+const alarm = hmi.alarms.find(a => a.id === alarmId);
+if(alarm) {
+alarm.acknowledged = true;
 ```
 
 </div>
@@ -893,15 +865,14 @@
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```javascript {191-195}
-191         alarm.acknowledgedBy = 'current_user';
-192         alarm.acknowledgedAt = new Date().toISOString();
-193         hmi.updateAlarmDisplay();
-194     }
-195 }
-196
-197 // HMI 시스템 초기화
-198 const hmi = new EtchEquipmentHMI();
+```javascript [191-195]
+alarm.acknowledgedBy = 'current_user';
+alarm.acknowledgedAt = new Date().toISOString();
+hmi.updateAlarmDisplay();
+}
+}
+// HMI 시스템 초기화
+const hmi = new EtchEquipmentHMI();
 ```
 
 </div>
@@ -929,13 +900,20 @@
 </div>
 
 ---
-#### 프로토타입 평가
-**휴리스틱 평가 체크리스트**:
+
+### 프로토타입 평가
+
+#### 휴리스틱 평가 체크리스트
 1. **가시성**: 시스템 상태가 명확한가?
 2. **일관성**: 유사한 기능이 유사하게 표현되는가?
 3. **오류 방지**: 위험한 동작에 확인 절차가 있는가?
 4. **인식 vs 회상**: 정보가 화면에 표시되는가?
 5. **효율성**: 숙련 사용자를 위한 단축키가 있는가?
+
+#### 사용자 피드백 수집
+- **정량적 지표**: 과업 완료 시간, 오류 횟수
+- **정성적 지표**: 만족도, 선호도, 개선 의견
+- **관찰 기록**: 사용 패턴, 혼란 지점, 질문 사항
 
 ---
 
@@ -971,13 +949,14 @@
 - 대응 시간 < 2분
 - 올바른 조치 선택률 > 90%
 
-#### 평가 지표 - Part 1: 클래스 초기화
-
 ---
+
+### 평가 지표 분석
+
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```python {1-22}
+```python [1-22]
 # 사용성 테스트 데이터 분석
 import numpy as np
 import pandas as pd
@@ -1030,7 +1009,7 @@ class UsabilityTestAnalyzer:
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```python {1-23}
+```python [1-23]
     def calculate_effectiveness_metrics(self):
         """효과성 지표 계산"""
         results = {}
@@ -1085,7 +1064,7 @@ class UsabilityTestAnalyzer:
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```python {1-12}
+```python [1-12]
     def get_sus_grade(self, score):
         """SUS 점수를 등급으로 변환"""
         if score >= 80.3: return 'A'
@@ -1124,7 +1103,7 @@ class UsabilityTestAnalyzer:
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```python {1-16}
+```python [1-16]
     def perform_comparative_analysis(self, baseline_data):
         """기준선 대비 성능 비교"""
         current_completion = np.mean(self.data['completion_time'])
@@ -1166,7 +1145,7 @@ class UsabilityTestAnalyzer:
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```python {1-15}
+```python [1-15]
 # 사용 예시
 test_data = [
     {'participant_id': 1, 'completion_time': 165, 'success': 1, 'errors': 0, 'sus_score': 78, 'error_type': None},
@@ -1212,7 +1191,7 @@ print(f"평균 SUS 점수: {satisfaction['avg_sus_score']:.1f} ({satisfaction['s
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```css {1-16}
+```css [1-16]
 ---
 </div>
 </div>
@@ -1224,7 +1203,7 @@ print(f"평균 SUS 점수: {satisfaction['avg_sus_score']:.1f} ({satisfaction['s
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```css {1-20}
+```css [1-20]
 ---
   - 빨간색 배경, 흰색 글자
   - 2px 테두리로 강조
@@ -1243,7 +1222,7 @@ print(f"평균 SUS 점수: {satisfaction['avg_sus_score']:.1f} ({satisfaction['s
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```css {1-26}
+```css [1-26]
 ---
 </div>
 <div>
@@ -1266,7 +1245,7 @@ print(f"평균 SUS 점수: {satisfaction['avg_sus_score']:.1f} ({satisfaction['s
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```javascript {1-29}
+```javascript [1-29]
 // SEMI E95 기반 레이아웃 계산기
 class SEMILayoutCalculator {
     constructor() {
@@ -1299,7 +1278,6 @@ class SEMILayoutCalculator {
     }
 ```
 
----
 </div>
 <div>
 
@@ -1326,7 +1304,7 @@ class SEMILayoutCalculator {
 <div class="grid grid-cols-2 gap-8">
 <div>
 
-```javascript {1-134}
+```javascript [1-134]
 
     calculateOptimalDisplayHeight(userHeight = null) {
         // 사용자 키가 제공되지 않으면 50th percentile 사용
@@ -1496,7 +1474,7 @@ console.log("Color Contrast Analysis:", contrast);
 #### Monte Carlo 시뮬레이션으로 HMI 성능 예측
 
 **시뮬레이터 클래스 초기화**
-```python {1-15}
+```python [1-15]
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
@@ -1519,7 +1497,7 @@ class HMIPerformanceSimulator:
 
 #### 시뮬레이션 실행 메서드
 
-```python {1-20}
+```python [1-20]
     def simulate_operator_performance(self, operator_type, task_type, n_simulations=10000):
         """운영자 성능 시뮬레이션"""
         operator = self.operator_profiles[operator_type]
@@ -1549,7 +1527,7 @@ class HMIPerformanceSimulator:
 
 #### 결과 분석 메서드
 
-```python {1-10}
+```python [1-10]
     def analyze_results(self, results):
         """시뮬레이션 결과 분석"""
         completion_times = [r['completion_time'] for r in results]
@@ -1566,7 +1544,7 @@ class HMIPerformanceSimulator:
 
 #### 시뮬레이션 실행 예시
 
-```python {1-12}
+```python [1-12]
 # 시뮬레이터 초기화 및 실행
 simulator = HMIPerformanceSimulator()
 
@@ -1603,7 +1581,7 @@ print(f"Error rate: {analysis['error_rate']:.3f}")
 
 #### 적응형 시스템 구현 예시
 
-```python {1-20}
+```python [1-20]
 class AdaptiveHMISystem:
     def __init__(self):
         # 베이지안 모델 파라미터
