@@ -1,70 +1,8 @@
-# Week 10: ImGui C++ 기초 및 실시간 반도체 HMI 개발
+# Week 10: ImGUI C++ 기초 및 실시간 반도체 HMI 개발
 
-<!-- .slide: data-background-gradient="linear-gradient(45deg, #2d3748, #4a5568)" -->
-<div style="text-align: center; color: white; padding: 3rem 2rem;">
-    <div style="margin-bottom: 2rem;">
-        <h1 style="font-size: 3.5em; margin-bottom: 0.5rem; color: #81c784; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">시스템 프로그래밍</h1>
-        <div style="width: 200px; height: 4px; background: linear-gradient(90deg, #81c784, #4fc3f7); margin: 1rem auto;"></div>
-    </div>
+## 🎯 **이론 강의 (45분) - ImGUI 개념 및 C++ 아키텍처**
 
-    <div style="margin-bottom: 3rem;">
-        <h2 style="font-size: 2.2em; margin-bottom: 1rem; color: #e2e8f0; font-weight: 300;">Week 10: ImGui C++ 기초</h2>
-        <p style="font-size: 1.2em; color: #cbd5e0; font-style: italic;">실시간 반도체 HMI 개발 기초</p>
-    </div>
-
-    <div style="border-top: 2px solid rgba(255,255,255,0.3); padding-top: 2rem; margin-top: 3rem;">
-        <p style="font-size: 1.1em; color: #a0aec0; margin-bottom: 0.5rem;"><strong>담당교수:</strong> 최창병</p>
-        <p style="font-size: 1.1em; color: #a0aec0; margin-bottom: 0.5rem;"><strong>학과:</strong> 컴퓨터공학과</p>
-        <p style="font-size: 1.1em; color: #a0aec0;"><strong>날짜:</strong> 2024년 11월</p>
-    </div>
-</div>
-
----
-
-<!-- .slide: data-background-color="#2d3748" -->
-<div style="text-align: center; color: white; padding: 2rem;">
-    <h1 style="font-size: 3em; margin-bottom: 1rem; color: #81c784;">학습 목표</h1>
-    <h2 style="font-size: 1.5em; color: #e2e8f0; font-weight: 300;">이번 강의에서 배울 내용</h2>
-</div>
-
----
-
-## 📌 학습 목표
-
-<div style="margin: 2rem 0;">
-
-### 🎯 주요 학습 내용
-
-<div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #007bff; margin: 1rem 0;">
-    <ul style="margin: 0; line-height: 1.8;">
-        <li><strong style="color: #1a365d;">ImGui 기본 개념:</strong> 즉시 모드 GUI의 특징과 장점 이해</li>
-        <li><strong style="color: #1a365d;">C++ 아키텍처:</strong> 모던 C++ 기법을 활용한 HMI 설계</li>
-        <li><strong style="color: #1a365d;">실시간 처리:</strong> 반도체 장비의 실시간 데이터 시각화</li>
-        <li><strong style="color: #1a365d;">실습 프로젝트:</strong> 기본적인 모니터링 시스템 구현</li>
-    </ul>
-</div>
-
-### 💡 중요 사항
-
-<div style="background: linear-gradient(135deg, #fff3cd, #ffeaa7); padding: 1.5rem; border-radius: 8px; border: 1px solid #f39c12; margin: 1.5rem 0;">
-    <p style="margin: 0; color: #856404; font-weight: 500; font-size: 1.1em;">
-        ⚠️ ImGui는 즉시 모드 GUI로서 기존 GUI 프레임워크와는 완전히 다른 접근 방식을 사용합니다. 매 프레임마다 UI를 다시 그리는 개념을 확실히 이해하는 것이 중요합니다.
-    </p>
-</div>
-
-</div>
-
----
-
-<!-- .slide: data-background-color="#2d3748" -->
-<div style="text-align: center; color: white; padding: 2rem;">
-    <h1 style="font-size: 3em; margin-bottom: 1rem; color: #81c784;">이론 강의</h1>
-    <h2 style="font-size: 1.5em; color: #e2e8f0; font-weight: 300;">ImGui 개념 및 C++ 아키텍처</h2>
-</div>
-
----
-
-## 📌 ImGui (Immediate Mode GUI) 개념
+### 1. ImGUI (Immediate Mode GUI) 개념
 
 #### 1.1 즉시 모드 vs 유지 모드 GUI
 ```cpp

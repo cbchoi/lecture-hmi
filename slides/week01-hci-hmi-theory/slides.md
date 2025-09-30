@@ -17,10 +17,28 @@
   - D: 목표까지 거리, W: 목표 크기, a,b: 경험적 상수
 
 ### 인지 아키텍처
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```text {1-3}
+1  감각등록기 → 작업기억 → 장기기억
+2  (0.25초)   (15-30초)  (영구저장)
+3
 ```
-감각등록기 → 작업기억 → 장기기억
-(0.25초)   (15-30초)  (영구저장)
-```
+
+</div>
+<div>
+
+**인지 아키텍처 구조**
+- **감각등록기**: 시각/청각 정보의 일시적 저장소
+- **작업기억**: 현재 처리 중인 정보의 임시 보관
+- **장기기억**: 영구적 지식과 경험의 저장소
+
+각 단계별 정보 처리 시간과 용량의 한계가 HMI 설계에 직접적 영향을 미침
+
+</div>
+</div>
 
 - **감각등록기**: 시각 정보 250ms, 청각 정보 2-4초 보존
 - **작업기억**: Baddeley 모델 - 중앙집행기, 음성순환기, 시공간스케치패드
@@ -508,14 +526,33 @@
    - 연습 시행 3회 실시
 
 2. **측정 단계** (20분)
-   ```
-   for 시퀀스_길이 in [3, 5, 7, 9, 11]:
-       for 시행 in range(1, 11):
-           숫자_시퀀스_제시(길이=시퀀스_길이, 제시_시간=1초)
-           대기_시간(2초)
-           사용자_입력_대기()
-           정확도_기록(시퀀스_길이, 시행, 정답_여부)
-   ```
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```python {1-7}
+1  for 시퀀스_길이 in [3, 5, 7, 9, 11]:
+2      for 시행 in range(1, 11):
+3          숫자_시퀀스_제시(길이=시퀀스_길이, 제시_시간=1초)
+4          대기_시간(2초)
+5          사용자_입력_대기()
+6          정확도_기록(시퀀스_길이, 시행, 정답_여부)
+7
+```
+
+</div>
+<div>
+
+**실험 프로토콜 설명**
+- **Line 1**: 5가지 시퀀스 길이 조건을 순차 실행
+- **Line 2**: 각 조건별로 10회 반복 시행
+- **Line 3**: 지정된 길이의 숫자 시퀀스를 1초간 제시
+- **Line 4**: 기억 강화를 위한 2초 대기시간
+- **Line 5**: 참가자의 응답 입력 대기
+- **Line 6**: 정답 여부를 데이터베이스에 기록
+
+</div>
+</div>
 
 3. **데이터 수집** (5분)
    - 개인별 정확도 데이터 수집
@@ -545,98 +582,210 @@
 - 목표 크기 (W): 20px, 40px, 80px
 - 총 9개 조건 조합
 
-#### 실험 코드 (JavaScript)
-```javascript
-// Fitts' Law 실험 구현
-class FittsLawExperiment {
-    constructor() {
-        this.canvas = document.getElementById('experimentCanvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.results = [];
-        this.currentTrial = 0;
-        this.conditions = this.generateConditions();
-    }
+#### 실험 코드 (JavaScript) - Part 1
 
-    generateConditions() {
-        const distances = [100, 200, 400];
-        const widths = [20, 40, 80];
-        let conditions = [];
+<div class="grid grid-cols-2 gap-8">
+<div>
 
-        for(let d of distances) {
-            for(let w of widths) {
-                conditions.push({
-                    distance: d,
-                    width: w,
-                    indexOfDifficulty: Math.log2(d/w + 1)
-                });
-            }
-        }
-        return this.shuffleArray(conditions);
-    }
-
-    startTrial() {
-        const condition = this.conditions[this.currentTrial];
-        this.startTime = performance.now();
-
-        // 시작점과 목표점 그리기
-        this.drawStartPoint(50, 300);
-        this.drawTarget(50 + condition.distance, 300, condition.width);
-
-        this.canvas.addEventListener('click', this.handleClick.bind(this));
-    }
-
-    handleClick(event) {
-        const endTime = performance.now();
-        const rect = this.canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-
-        const condition = this.conditions[this.currentTrial];
-        const targetX = 50 + condition.distance;
-        const targetY = 300;
-
-        const hit = this.isWithinTarget(x, y, targetX, targetY, condition.width);
-        const movementTime = endTime - this.startTime;
-
-        this.results.push({
-            trial: this.currentTrial + 1,
-            distance: condition.distance,
-            width: condition.width,
-            indexOfDifficulty: condition.indexOfDifficulty,
-            movementTime: movementTime,
-            hit: hit,
-            actualX: x,
-            actualY: y
-        });
-
-        this.nextTrial();
-    }
-
-    calculateResults() {
-        const validTrials = this.results.filter(r => r.hit);
-
-        // 회귀분석: MT = a + b * ID
-        const xValues = validTrials.map(r => r.indexOfDifficulty);
-        const yValues = validTrials.map(r => r.movementTime);
-
-        const n = xValues.length;
-        const sumX = xValues.reduce((a, b) => a + b, 0);
-        const sumY = yValues.reduce((a, b) => a + b, 0);
-        const sumXY = xValues.reduce((sum, x, i) => sum + x * yValues[i], 0);
-        const sumXX = xValues.reduce((sum, x) => sum + x * x, 0);
-
-        const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-        const intercept = (sumY - slope * sumX) / n;
-
-        return {
-            a: intercept,
-            b: slope,
-            equation: `MT = ${intercept.toFixed(2)} + ${slope.toFixed(2)} * ID`,
-            rSquared: this.calculateRSquared(xValues, yValues, slope, intercept)
-        };
-    }
-}
+```javascript {1-25}
+1  // Fitts' Law 실험 구현
+2  class FittsLawExperiment {
+3      constructor() {
+4          this.canvas = document.getElementById('experimentCanvas');
+5          this.ctx = this.canvas.getContext('2d');
+6          this.results = [];
+7          this.currentTrial = 0;
+8          this.conditions = this.generateConditions();
+9      }
+10
+11     generateConditions() {
+12         const distances = [100, 200, 400];
+13         const widths = [20, 40, 80];
+14         let conditions = [];
+15
+16         for(let d of distances) {
+17             for(let w of widths) {
+18                 conditions.push({
+19                     distance: d,
+20                     width: w,
+21                     indexOfDifficulty: Math.log2(d/w + 1)
+22                 });
+23             }
+24         }
+25         return this.shuffleArray(conditions);
 ```
+
+</div>
+<div>
+
+**클래스 초기화 및 조건 생성**
+- **Line 2-9**: FittsLawExperiment 클래스 생성자
+  - 캔버스 요소와 2D 컨텍스트 초기화
+  - 결과 저장 배열과 현재 시행 번호 초기화
+  - 실험 조건 생성 메서드 호출
+
+- **Line 11-25**: 실험 조건 생성 메서드
+  - **Line 12-13**: 3가지 거리(100, 200, 400px)와 3가지 너비(20, 40, 80px) 정의
+  - **Line 16-24**: 9가지 조건 조합 생성 (3×3 = 9개)
+  - **Line 21**: Fitts' Law의 난이도 지수(ID) 계산: ID = log₂(D/W + 1)
+  - **Line 25**: 조건 순서를 무작위로 섞어 순서 효과 제거
+
+</div>
+</div>
+
+---
+
+#### 실험 코드 (JavaScript) - Part 2
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```javascript {26-50}
+26     startTrial() {
+27         const condition = this.conditions[this.currentTrial];
+28         this.startTime = performance.now();
+29
+30         // 시작점과 목표점 그리기
+31         this.drawStartPoint(50, 300);
+32         this.drawTarget(50 + condition.distance, 300, condition.width);
+33
+34         this.canvas.addEventListener('click', this.handleClick.bind(this));
+35     }
+36
+37     handleClick(event) {
+38         const endTime = performance.now();
+39         const rect = this.canvas.getBoundingClientRect();
+40         const x = event.clientX - rect.left;
+41         const y = event.clientY - rect.top;
+42
+43         const condition = this.conditions[this.currentTrial];
+44         const targetX = 50 + condition.distance;
+45         const targetY = 300;
+46
+47         const hit = this.isWithinTarget(x, y, targetX, targetY, condition.width);
+48         const movementTime = endTime - this.startTime;
+49
+50         this.results.push({
+```
+
+</div>
+<div>
+
+**시행 시작 및 클릭 처리**
+- **Line 26-35**: 개별 시행 시작 메서드
+  - **Line 27**: 현재 시행의 실험 조건 가져오기
+  - **Line 28**: 고정밀 타이머로 시작 시간 기록
+  - **Line 31-32**: 시작점(50, 300)과 목표점 그리기
+  - **Line 34**: 클릭 이벤트 리스너 등록
+
+- **Line 37-50**: 클릭 이벤트 처리 메서드
+  - **Line 38**: 클릭 시점의 종료 시간 기록
+  - **Line 39-41**: 마우스 클릭 좌표를 캔버스 좌표로 변환
+  - **Line 44-45**: 목표점의 실제 좌표 계산
+  - **Line 47**: 클릭이 목표 영역 내부인지 판정
+  - **Line 48**: 이동 시간 계산 (종료시간 - 시작시간)
+
+</div>
+</div>
+
+---
+
+#### 실험 코드 (JavaScript) - Part 3
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```javascript {51-75}
+51         trial: this.currentTrial + 1,
+52         distance: condition.distance,
+53         width: condition.width,
+54         indexOfDifficulty: condition.indexOfDifficulty,
+55         movementTime: movementTime,
+56         hit: hit,
+57         actualX: x,
+58         actualY: y
+59     });
+60
+61     this.nextTrial();
+62 }
+63
+64 calculateResults() {
+65     const validTrials = this.results.filter(r => r.hit);
+66
+67     // 회귀분석: MT = a + b * ID
+68     const xValues = validTrials.map(r => r.indexOfDifficulty);
+69     const yValues = validTrials.map(r => r.movementTime);
+70
+71     const n = xValues.length;
+72     const sumX = xValues.reduce((a, b) => a + b, 0);
+73     const sumY = yValues.reduce((a, b) => a + b, 0);
+74     const sumXY = xValues.reduce((sum, x, i) => sum + x * yValues[i], 0);
+75     const sumXX = xValues.reduce((sum, x) => sum + x * x, 0);
+```
+
+</div>
+<div>
+
+**결과 저장 및 회귀분석 시작**
+- **Line 51-59**: 시행 결과 데이터 객체 생성
+  - 시행 번호, 거리, 너비, 난이도 지수 저장
+  - 이동 시간, 명중 여부, 실제 클릭 좌표 기록
+
+- **Line 61**: 다음 시행으로 진행
+
+- **Line 64-75**: 결과 계산 메서드
+  - **Line 65**: 성공한 시행만 필터링 (명중한 경우만)
+  - **Line 68-69**: 회귀분석을 위한 X값(난이도)과 Y값(시간) 추출
+  - **Line 71-75**: 선형회귀 계산을 위한 통계값 산출
+    - n: 데이터 개수, sumX/Y: 합계, sumXY/XX: 곱의 합계
+
+</div>
+</div>
+
+---
+
+#### 실험 코드 (JavaScript) - Part 4
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```javascript {76-90}
+76     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+77     const intercept = (sumY - slope * sumX) / n;
+78
+79     return {
+80         a: intercept,
+81         b: slope,
+82         equation: `MT = ${intercept.toFixed(2)} + ${slope.toFixed(2)} * ID`,
+83         rSquared: this.calculateRSquared(xValues, yValues, slope, intercept)
+84     };
+85 }
+86 }
+87
+88 // 데이터 분석
+89 - **회귀식 도출**: MT = a + b × ID
+90 - **개인차 분석**: 표준편차, 변이계수
+```
+
+</div>
+<div>
+
+**회귀분석 완료 및 결과 반환**
+- **Line 76-77**: 최소제곱법으로 회귀계수 계산
+  - **slope**: Fitts' Law의 기울기 (b), 난이도 증가에 따른 시간 증가율
+  - **intercept**: y절편 (a), 기본 반응시간
+
+- **Line 79-84**: 분석 결과 객체 반환
+  - **a, b**: 회귀계수 (Fitts' Law: MT = a + b × ID)
+  - **equation**: 사람이 읽기 쉬운 수식 문자열
+  - **rSquared**: 결정계수 (모델의 설명력)
+
+- **Line 88-90**: 추가 분석 항목
+  - 개인별 성능 차이 분석을 위한 통계 지표
+  - HMI 설계 가이드라인 도출을 위한 기초 데이터
+
+</div>
+</div>
 
 #### 데이터 분석
 - **회귀식 도출**: MT = a + b × ID
@@ -673,159 +822,345 @@ class FittsLawExperiment {
    - HVAC 시스템: 연속 저주파
    - 장비 동작음: 간헐적 고주파
 
-#### Unity C# 코드 예제
-```csharp
-using UnityEngine;
-using UnityEngine.XR;
+#### Unity C# 코드 예제 - Part 1
 
-public class CleanroomSimulation : MonoBehaviour
-{
-    [Header("Environmental Settings")]
-    public Light yellowLight;
-    public AudioSource hvacSound;
-    public ParticleSystem airFlow;
+<div class="grid grid-cols-2 gap-8">
+<div>
 
-    [Header("Equipment Models")]
-    public GameObject[] equipmentPrefabs;
-    public Transform[] equipmentPositions;
-
-    private float currentNoiseLevel = 65f;
-    private float ambientTemperature = 22.5f;
-    private float relativeHumidity = 45f;
-
-    void Start()
-    {
-        SetupCleanroomEnvironment();
-        InitializeEquipment();
-        StartEnvironmentalMonitoring();
-    }
-
-    void SetupCleanroomEnvironment()
-    {
-        // 황색광 설정 (585nm 근사)
-        yellowLight.color = new Color(1f, 0.8f, 0.3f, 1f);
-        yellowLight.intensity = 1.2f;
-        yellowLight.shadows = LightShadows.Soft;
-
-        // HVAC 시스템 소음
-        hvacSound.clip = Resources.Load<AudioClip>("HVACSound");
-        hvacSound.volume = 0.3f;
-        hvacSound.loop = true;
-        hvacSound.Play();
-
-        // 층류 공기흐름 시뮬레이션
-        var main = airFlow.main;
-        main.startLifetime = 5f;
-        main.startSpeed = 0.5f;
-        main.maxParticles = 1000;
-
-        var shape = airFlow.shape;
-        shape.shapeType = ParticleSystemShapeType.Box;
-        shape.scale = new Vector3(20f, 0.1f, 15f);
-
-        var velocityOverLifetime = airFlow.velocityOverLifetime;
-        velocityOverLifetime.enabled = true;
-        velocityOverLifetime.space = ParticleSystemSimulationSpace.World;
-        velocityOverLifetime.y = new ParticleSystem.MinMaxCurve(-0.5f);
-    }
-
-    void InitializeEquipment()
-    {
-        for(int i = 0; i < equipmentPrefabs.Length; i++)
-        {
-            if(i < equipmentPositions.Length)
-            {
-                GameObject equipment = Instantiate(equipmentPrefabs[i],
-                                                 equipmentPositions[i].position,
-                                                 equipmentPositions[i].rotation);
-
-                // HMI 패널 설정
-                HMIPanel hmiPanel = equipment.GetComponentInChildren<HMIPanel>();
-                if(hmiPanel != null)
-                {
-                    hmiPanel.Initialize(GetEquipmentParameters(i));
-                }
-            }
-        }
-    }
-
-    EquipmentParameters GetEquipmentParameters(int equipmentIndex)
-    {
-        switch(equipmentIndex)
-        {
-            case 0: // Stepper
-                return new EquipmentParameters
-                {
-                    name = "ASML PAS 5500",
-                    throughput = 150, // WPH
-                    overlayAccuracy = 2.0f, // nm
-                    cdUniformity = 1.5f // nm
-                };
-
-            case 1: // CVD
-                return new EquipmentParameters
-                {
-                    name = "AMAT Centura",
-                    temperature = 450f, // Celsius
-                    pressure = 10f, // Torr
-                    gasFlow = 100f // sccm
-                };
-
-            default:
-                return new EquipmentParameters();
-        }
-    }
-
-    void StartEnvironmentalMonitoring()
-    {
-        InvokeRepeating("UpdateEnvironmentalData", 1f, 1f);
-    }
-
-    void UpdateEnvironmentalData()
-    {
-        // 환경 데이터 시뮬레이션 (정규분포 노이즈 추가)
-        ambientTemperature = 22.5f + Random.Range(-0.05f, 0.05f);
-        relativeHumidity = 45f + Random.Range(-0.5f, 0.5f);
-        currentNoiseLevel = 65f + Random.Range(-2f, 2f);
-
-        // UI 업데이트
-        UpdateEnvironmentalDisplay();
-
-        // 임계값 체크
-        CheckEnvironmentalAlarms();
-    }
-
-    void CheckEnvironmentalAlarms()
-    {
-        if(ambientTemperature < 22.4f || ambientTemperature > 22.6f)
-        {
-            TriggerAlarm("Temperature out of range: " + ambientTemperature.ToString("F2") + "°C");
-        }
-
-        if(relativeHumidity < 44f || relativeHumidity > 46f)
-        {
-            TriggerAlarm("Humidity out of range: " + relativeHumidity.ToString("F1") + "%");
-        }
-    }
-
-    void TriggerAlarm(string message)
-    {
-        AlarmManager.Instance.ShowAlarm(message, AlarmPriority.Medium);
-    }
-}
-
-[System.Serializable]
-public class EquipmentParameters
-{
-    public string name;
-    public float throughput;
-    public float overlayAccuracy;
-    public float cdUniformity;
-    public float temperature;
-    public float pressure;
-    public float gasFlow;
-}
+```csharp {1-25}
+1  using UnityEngine;
+2  using UnityEngine.XR;
+3
+4  public class CleanroomSimulation : MonoBehaviour
+5  {
+6      [Header("Environmental Settings")]
+7      public Light yellowLight;
+8      public AudioSource hvacSound;
+9      public ParticleSystem airFlow;
+10
+11     [Header("Equipment Models")]
+12     public GameObject[] equipmentPrefabs;
+13     public Transform[] equipmentPositions;
+14
+15     private float currentNoiseLevel = 65f;
+16     private float ambientTemperature = 22.5f;
+17     private float relativeHumidity = 45f;
+18
+19     void Start()
+20     {
+21         SetupCleanroomEnvironment();
+22         InitializeEquipment();
+23         StartEnvironmentalMonitoring();
+24     }
+25
 ```
+
+</div>
+<div>
+
+**클래스 선언 및 초기화**
+- **Line 1-2**: Unity 3D와 XR(VR/AR) 네임스페이스 import
+- **Line 4**: MonoBehaviour 상속으로 Unity 컴포넌트 생성
+- **Line 6-9**: 환경 설정 관련 public 변수
+  - **yellowLight**: 클린룸 황색광 조명
+  - **hvacSound**: HVAC 시스템 소음 재생
+  - **airFlow**: 층류 공기흐름 파티클 시스템
+
+- **Line 11-13**: 장비 모델 관련 변수
+  - **equipmentPrefabs**: 반도체 장비 프리팹 배열
+  - **equipmentPositions**: 장비 배치 위치 배열
+
+- **Line 15-17**: 환경 모니터링 변수 (소음, 온도, 습도)
+- **Line 19-24**: Start() 메서드로 시뮬레이션 초기화 순서 정의
+
+</div>
+</div>
+
+---
+
+#### Unity C# 코드 예제 - Part 2
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```csharp {26-50}
+26     void SetupCleanroomEnvironment()
+27     {
+28         // 황색광 설정 (585nm 근사)
+29         yellowLight.color = new Color(1f, 0.8f, 0.3f, 1f);
+30         yellowLight.intensity = 1.2f;
+31         yellowLight.shadows = LightShadows.Soft;
+32
+33         // HVAC 시스템 소음
+34         hvacSound.clip = Resources.Load<AudioClip>("HVACSound");
+35         hvacSound.volume = 0.3f;
+36         hvacSound.loop = true;
+37         hvacSound.Play();
+38
+39         // 층류 공기흐름 시뮬레이션
+40         var main = airFlow.main;
+41         main.startLifetime = 5f;
+42         main.startSpeed = 0.5f;
+43         main.maxParticles = 1000;
+44
+45         var shape = airFlow.shape;
+46         shape.shapeType = ParticleSystemShapeType.Box;
+47         shape.scale = new Vector3(20f, 0.1f, 15f);
+48
+49         var velocityOverLifetime = airFlow.velocityOverLifetime;
+50         velocityOverLifetime.enabled = true;
+```
+
+</div>
+<div>
+
+**클린룸 환경 설정 메서드**
+- **Line 26**: 클린룸 환경 구성 메서드 시작
+- **Line 28-31**: 황색광 조명 설정
+  - **Line 29**: RGB(1.0, 0.8, 0.3)로 585nm 황색광 근사
+  - **Line 30**: 조명 강도 1.2로 설정 (400 lux 달성)
+  - **Line 31**: 소프트 그림자로 시각적 피로 최소화
+
+- **Line 33-37**: HVAC 시스템 소음 설정
+  - **Line 34**: Resources 폴더에서 HVAC 소음 파일 로드
+  - **Line 35-36**: 볼륨 0.3, 반복 재생 설정
+  - **Line 37**: 배경 소음 재생 시작
+
+- **Line 39-50**: 층류 공기흐름 파티클 시스템
+  - **Line 41-43**: 파티클 수명 5초, 속도 0.5m/s, 최대 1000개
+  - **Line 46-47**: Box 형태로 20×0.1×15m 영역 설정
+
+</div>
+</div>
+
+---
+
+#### Unity C# 코드 예제 - Part 3
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```csharp {51-75}
+51         velocityOverLifetime.space = ParticleSystemSimulationSpace.World;
+52         velocityOverLifetime.y = new ParticleSystem.MinMaxCurve(-0.5f);
+53     }
+54
+55     void InitializeEquipment()
+56     {
+57         for(int i = 0; i < equipmentPrefabs.Length; i++)
+58         {
+59             if(i < equipmentPositions.Length)
+60             {
+61                 GameObject equipment = Instantiate(equipmentPrefabs[i],
+62                                                  equipmentPositions[i].position,
+63                                                  equipmentPositions[i].rotation);
+64
+65                 // HMI 패널 설정
+66                 HMIPanel hmiPanel = equipment.GetComponentInChildren<HMIPanel>();
+67                 if(hmiPanel != null)
+68                 {
+69                     hmiPanel.Initialize(GetEquipmentParameters(i));
+70                 }
+71             }
+72         }
+73     }
+74
+75     EquipmentParameters GetEquipmentParameters(int equipmentIndex)
+```
+
+</div>
+<div>
+
+**장비 초기화 및 파라미터 설정**
+- **Line 51-52**: 파티클 속도 설정 완료
+  - World 좌표계에서 Y축 -0.5m/s로 하향 기류 모사
+
+- **Line 55-73**: 장비 초기화 메서드
+  - **Line 57**: 모든 장비 프리팹에 대해 반복 처리
+  - **Line 59**: 배치 위치가 유효한지 확인
+  - **Line 61-63**: 지정된 위치와 회전으로 장비 인스턴스 생성
+  - **Line 66**: 하위 컴포넌트에서 HMI 패널 검색
+  - **Line 67-70**: HMI 패널이 존재하면 장비별 파라미터로 초기화
+
+- **Line 75**: 장비별 파라미터 반환 메서드 선언
+  - 각 장비 타입에 맞는 운영 파라미터 제공
+  - 리소그래피, CVD 등 장비별 특성 반영
+
+</div>
+</div>
+
+---
+
+#### Unity C# 코드 예제 - Part 4
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```csharp {76-100}
+76     {
+77         switch(equipmentIndex)
+78         {
+79             case 0: // Stepper
+80                 return new EquipmentParameters
+81                 {
+82                     name = "ASML PAS 5500",
+83                     throughput = 150, // WPH
+84                     overlayAccuracy = 2.0f, // nm
+85                     cdUniformity = 1.5f // nm
+86                 };
+87
+88             case 1: // CVD
+89                 return new EquipmentParameters
+90                 {
+91                     name = "AMAT Centura",
+92                     temperature = 450f, // Celsius
+93                     pressure = 10f, // Torr
+94                     gasFlow = 100f // sccm
+95                 };
+96
+97             default:
+98                 return new EquipmentParameters();
+99         }
+100    }
+```
+
+</div>
+<div>
+
+**장비별 파라미터 설정**
+- **Line 77**: switch문으로 장비 인덱스별 분기 처리
+- **Line 79-86**: 리소그래피 장비 (ASML PAS 5500) 설정
+  - **throughput**: 150 WPH (Wafers Per Hour)
+  - **overlayAccuracy**: 2.0nm 오버레이 정확도
+  - **cdUniformity**: 1.5nm CD(Critical Dimension) 균일성
+
+- **Line 88-95**: CVD 장비 (Applied Materials Centura) 설정
+  - **temperature**: 450°C 챔버 온도
+  - **pressure**: 10 Torr 공정 압력
+  - **gasFlow**: 100 sccm 가스 유량
+
+- **Line 97-98**: 기본값 반환 (정의되지 않은 장비)
+- **Line 100**: 메서드 종료
+
+실제 반도체 장비의 운영 사양을 반영한 정확한 수치
+
+</div>
+</div>
+
+---
+
+#### Unity C# 코드 예제 - Part 5
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```csharp {101-125}
+101    void StartEnvironmentalMonitoring()
+102    {
+103        InvokeRepeating("UpdateEnvironmentalData", 1f, 1f);
+104    }
+105
+106    void UpdateEnvironmentalData()
+107    {
+108        // 환경 데이터 시뮬레이션 (정규분포 노이즈 추가)
+109        ambientTemperature = 22.5f + Random.Range(-0.05f, 0.05f);
+110        relativeHumidity = 45f + Random.Range(-0.5f, 0.5f);
+111        currentNoiseLevel = 65f + Random.Range(-2f, 2f);
+112
+113        // UI 업데이트
+114        UpdateEnvironmentalDisplay();
+115
+116        // 임계값 체크
+117        CheckEnvironmentalAlarms();
+118    }
+119
+120    void CheckEnvironmentalAlarms()
+121    {
+122        if(ambientTemperature < 22.4f || ambientTemperature > 22.6f)
+123        {
+124            TriggerAlarm("Temperature out of range: " + ambientTemperature.ToString("F2") + "°C");
+125        }
+```
+
+</div>
+<div>
+
+**환경 모니터링 시스템**
+- **Line 101-104**: 환경 모니터링 시작
+  - **Line 103**: 1초 간격으로 환경 데이터 업데이트 반복 실행
+
+- **Line 106-118**: 환경 데이터 업데이트 메서드
+  - **Line 109**: 온도 22.5±0.05°C 범위에서 랜덤 변동
+  - **Line 110**: 습도 45±0.5% 범위에서 변동
+  - **Line 111**: 소음 65±2dB 범위에서 변동
+  - **Line 114**: UI 디스플레이 업데이트 호출
+  - **Line 117**: 알람 조건 확인 메서드 호출
+
+- **Line 120-125**: 환경 알람 체크
+  - **Line 122**: 온도가 22.4-22.6°C 범위를 벗어나면 알람
+  - **Line 124**: 온도 이상 알람 메시지 생성 및 트리거
+
+정밀한 환경 제어가 필요한 클린룸 특성 반영
+
+</div>
+</div>
+
+---
+
+#### Unity C# 코드 예제 - Part 6
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```csharp {126-140}
+126
+127        if(relativeHumidity < 44f || relativeHumidity > 46f)
+128        {
+129            TriggerAlarm("Humidity out of range: " + relativeHumidity.ToString("F1") + "%");
+130        }
+131    }
+132
+133    void TriggerAlarm(string message)
+134    {
+135        AlarmManager.Instance.ShowAlarm(message, AlarmPriority.Medium);
+136    }
+137 }
+138
+139 [System.Serializable]
+140 public class EquipmentParameters
+141 {
+142     public string name;
+143     public float throughput;
+144     public float overlayAccuracy;
+145     public float cdUniformity;
+146     public float temperature;
+147     public float pressure;
+148     public float gasFlow;
+149 }
+```
+
+</div>
+<div>
+
+**알람 시스템 및 데이터 구조**
+- **Line 127-130**: 습도 알람 체크
+  - 44-46% 범위를 벗어나면 습도 이상 알람 발생
+  - 소수점 1자리까지 표시하는 포맷 사용
+
+- **Line 133-136**: 알람 트리거 메서드
+  - **Line 135**: 싱글톤 패턴의 AlarmManager를 통해 알람 표시
+  - Medium 우선순위로 알람 분류 (Critical, High, Medium, Low)
+
+- **Line 139-149**: 장비 파라미터 데이터 클래스
+  - **[System.Serializable]**: Unity Inspector에서 편집 가능
+  - **Line 142-148**: 다양한 장비 타입의 파라미터 수용
+    - 범용적 구조로 확장성 확보
+    - 반도체 장비별 특성 파라미터 포함
+
+클린룸 환경 시뮬레이션의 완성된 구조
+
+</div>
+</div>
 
 #### 체험 시나리오
 1. **진입 절차** (10분)
@@ -1048,207 +1383,489 @@ public class EquipmentParameters
 }
 ```
 
-#### 인터랙션 설계
-```javascript
-// HMI 인터랙션 로직
-class EtchEquipmentHMI {
-    constructor() {
-        this.currentStep = 1;
-        this.totalSteps = 15;
-        this.isRunning = false;
-        this.parameters = {
-            rfPower: 0,
-            biasPower: 0,
-            pressure: 0,
-            sf6Flow: 0,
-            o2Flow: 0,
-            heFlow: 0,
-            chuckTemp: 20,
-            electrodeTemp: 20
-        };
+#### 인터랙션 설계 - Part 1
 
-        this.alarms = [];
-        this.initializeEventListeners();
-        this.startDataUpdating();
-    }
+<div class="grid grid-cols-2 gap-8">
+<div>
 
-    initializeEventListeners() {
-        document.getElementById('startBtn').addEventListener('click', () => {
-            if(this.validateStartConditions()) {
-                this.startProcess();
-            }
-        });
-
-        document.getElementById('stopBtn').addEventListener('click', () => {
-            this.stopProcess();
-        });
-
-        document.getElementById('emergencyBtn').addEventListener('click', () => {
-            this.emergencyStop();
-        });
-    }
-
-    validateStartConditions() {
-        const checks = [
-            { condition: this.parameters.pressure < 1, message: "Chamber pressure too high" },
-            { condition: this.parameters.chuckTemp < -25 || this.parameters.chuckTemp > 85, message: "Chuck temperature out of range" },
-            { condition: this.alarms.some(a => a.priority === 'critical'), message: "Critical alarms present" }
-        ];
-
-        for(let check of checks) {
-            if(check.condition) {
-                this.showDialog('Start Validation Failed', check.message);
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    startProcess() {
-        this.isRunning = true;
-        this.currentStep = 1;
-        document.getElementById('processStatus').textContent = 'Running';
-        document.getElementById('processStatus').className = 'status-running';
-
-        // 레시피 실행 시뮬레이션
-        this.executeRecipe();
-    }
-
-    executeRecipe() {
-        const recipe = [
-            { step: 1, rfPower: 100, pressure: 10, sf6Flow: 50, duration: 30 },
-            { step: 2, rfPower: 500, pressure: 15, sf6Flow: 100, duration: 120 },
-            { step: 3, rfPower: 1000, pressure: 20, sf6Flow: 150, duration: 180 },
-            // ... 추가 스텝들
-        ];
-
-        if(this.currentStep <= recipe.length && this.isRunning) {
-            const currentRecipeStep = recipe[this.currentStep - 1];
-            this.executeStep(currentRecipeStep);
-        }
-    }
-
-    executeStep(step) {
-        const startTime = Date.now();
-        const updateInterval = 100; // 100ms 업데이트
-
-        const stepExecution = setInterval(() => {
-            const elapsed = Date.now() - startTime;
-            const progress = Math.min(elapsed / (step.duration * 1000), 1);
-
-            // 파라미터 점진적 변화
-            this.parameters.rfPower = this.interpolate(
-                this.parameters.rfPower, step.rfPower, progress
-            );
-            this.parameters.pressure = this.interpolate(
-                this.parameters.pressure, step.pressure, progress
-            );
-            this.parameters.sf6Flow = this.interpolate(
-                this.parameters.sf6Flow, step.sf6Flow, progress
-            );
-
-            // UI 업데이트
-            this.updateParameterDisplay();
-            this.updateProgressDisplay();
-
-            // 스텝 완료 체크
-            if(progress >= 1) {
-                clearInterval(stepExecution);
-                this.currentStep++;
-
-                if(this.currentStep <= 15 && this.isRunning) {
-                    setTimeout(() => this.executeRecipe(), 1000);
-                } else {
-                    this.completeProcess();
-                }
-            }
-        }, updateInterval);
-    }
-
-    interpolate(current, target, progress) {
-        return current + (target - current) * progress;
-    }
-
-    updateParameterDisplay() {
-        document.getElementById('rfPower').textContent = Math.round(this.parameters.rfPower);
-        document.getElementById('pressure').textContent = this.parameters.pressure.toFixed(1);
-        document.getElementById('sf6Flow').textContent = Math.round(this.parameters.sf6Flow);
-        // ... 다른 파라미터들
-    }
-
-    updateProgressDisplay() {
-        const progressPercent = (this.currentStep / 15) * 100;
-        document.getElementById('progressBar').style.width = `${progressPercent}%`;
-        document.getElementById('currentStep').textContent = this.currentStep;
-        document.getElementById('totalSteps').textContent = '15';
-    }
-
-    emergencyStop() {
-        this.isRunning = false;
-        this.parameters.rfPower = 0;
-        this.parameters.biasPower = 0;
-
-        // 모든 가스 차단
-        this.parameters.sf6Flow = 0;
-        this.parameters.o2Flow = 0;
-        this.parameters.heFlow = 0;
-
-        // 긴급정지 알람
-        this.addAlarm({
-            id: Date.now(),
-            priority: 'critical',
-            message: 'EMERGENCY STOP ACTIVATED',
-            timestamp: new Date().toISOString(),
-            acknowledged: false
-        });
-
-        document.getElementById('processStatus').textContent = 'Emergency Stop';
-        document.getElementById('processStatus').className = 'status-emergency';
-    }
-
-    addAlarm(alarm) {
-        this.alarms.unshift(alarm);
-        this.updateAlarmDisplay();
-
-        // 소리 알림 (실제 시스템에서는 하드웨어 부저)
-        if(alarm.priority === 'critical') {
-            this.playAlarmSound('critical');
-        }
-    }
-
-    updateAlarmDisplay() {
-        const alarmContainer = document.getElementById('alarmList');
-        alarmContainer.innerHTML = '';
-
-        this.alarms.slice(0, 10).forEach(alarm => {
-            const alarmElement = document.createElement('div');
-            alarmElement.className = `alarm-item alarm-${alarm.priority}`;
-            alarmElement.innerHTML = `
-                <div class="alarm-priority">${alarm.priority.toUpperCase()}</div>
-                <div class="alarm-message">${alarm.message}</div>
-                <div class="alarm-time">${new Date(alarm.timestamp).toLocaleTimeString()}</div>
-                ${!alarm.acknowledged ? '<button class="ack-btn" onclick="acknowledgeAlarm(' + alarm.id + ')">ACK</button>' : ''}
-            `;
-            alarmContainer.appendChild(alarmElement);
-        });
-    }
-}
-
-// 전역 함수
-function acknowledgeAlarm(alarmId) {
-    const alarm = hmi.alarms.find(a => a.id === alarmId);
-    if(alarm) {
-        alarm.acknowledged = true;
-        alarm.acknowledgedBy = 'current_user';
-        alarm.acknowledgedAt = new Date().toISOString();
-        hmi.updateAlarmDisplay();
-    }
-}
-
-// HMI 시스템 초기화
-const hmi = new EtchEquipmentHMI();
+```javascript {1-25}
+1  // HMI 인터랙션 로직
+2  class EtchEquipmentHMI {
+3      constructor() {
+4          this.currentStep = 1;
+5          this.totalSteps = 15;
+6          this.isRunning = false;
+7          this.parameters = {
+8              rfPower: 0,
+9              biasPower: 0,
+10             pressure: 0,
+11             sf6Flow: 0,
+12             o2Flow: 0,
+13             heFlow: 0,
+14             chuckTemp: 20,
+15             electrodeTemp: 20
+16         };
+17
+18         this.alarms = [];
+19         this.initializeEventListeners();
+20         this.startDataUpdating();
+21     }
+22
+23     initializeEventListeners() {
+24         document.getElementById('startBtn').addEventListener('click', () => {
+25             if(this.validateStartConditions()) {
 ```
+
+</div>
+<div>
+
+**HMI 클래스 초기화**
+- **Line 2**: 식각 장비 HMI 클래스 선언
+- **Line 3-21**: 생성자에서 초기 상태 설정
+  - **Line 4-6**: 공정 진행 상태 변수 (현재 스텝, 총 스텝, 실행 상태)
+  - **Line 7-16**: 실시간 모니터링 파라미터 객체
+    - RF 파워, 바이어스 파워, 압력
+    - 3가지 가스 유량 (SF6, O2, He)
+    - 온도 제어 (척, 상부 전극)
+
+- **Line 18**: 알람 배열 초기화
+- **Line 19-20**: 이벤트 리스너와 데이터 업데이트 시작
+
+- **Line 23-25**: 이벤트 리스너 초기화 시작
+  - 시작 버튼 클릭 시 조건 검증 후 공정 시작
+
+</div>
+</div>
+
+---
+
+#### 인터랙션 설계 - Part 2
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```javascript {26-50}
+26                 this.startProcess();
+27             }
+28         });
+29
+30         document.getElementById('stopBtn').addEventListener('click', () => {
+31             this.stopProcess();
+32         });
+33
+34         document.getElementById('emergencyBtn').addEventListener('click', () => {
+35             this.emergencyStop();
+36         });
+37     }
+38
+39     validateStartConditions() {
+40         const checks = [
+41             { condition: this.parameters.pressure < 1, message: "Chamber pressure too high" },
+42             { condition: this.parameters.chuckTemp < -25 || this.parameters.chuckTemp > 85, message: "Chuck temperature out of range" },
+43             { condition: this.alarms.some(a => a.priority === 'critical'), message: "Critical alarms present" }
+44         ];
+45
+46         for(let check of checks) {
+47             if(check.condition) {
+48                 this.showDialog('Start Validation Failed', check.message);
+49                 return false;
+50             }
+```
+
+</div>
+<div>
+
+**이벤트 처리 및 시작 조건 검증**
+- **Line 26-28**: 시작 프로세스 실행 및 클릭 이벤트 완료
+- **Line 30-32**: 정지 버튼 이벤트 리스너
+- **Line 34-36**: 긴급정지 버튼 이벤트 리스너
+
+- **Line 39-50**: 시작 조건 검증 메서드
+  - **Line 40-44**: 검증 조건 배열 정의
+    - **압력 체크**: 1 Torr 미만이어야 시작 가능
+    - **온도 체크**: 척 온도 -25°C ~ 85°C 범위 확인
+    - **알람 체크**: Critical 알람이 없어야 시작 가능
+
+- **Line 46-50**: 조건 검증 루프
+  - 조건 위반 시 다이얼로그 표시하고 false 반환
+  - 모든 조건 만족 시 공정 시작 허용
+
+</div>
+</div>
+
+---
+
+#### 인터랙션 설계 - Part 3
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```javascript {51-75}
+51         }
+52
+53         return true;
+54     }
+55
+56     startProcess() {
+57         this.isRunning = true;
+58         this.currentStep = 1;
+59         document.getElementById('processStatus').textContent = 'Running';
+60         document.getElementById('processStatus').className = 'status-running';
+61
+62         // 레시피 실행 시뮬레이션
+63         this.executeRecipe();
+64     }
+65
+66     executeRecipe() {
+67         const recipe = [
+68             { step: 1, rfPower: 100, pressure: 10, sf6Flow: 50, duration: 30 },
+69             { step: 2, rfPower: 500, pressure: 15, sf6Flow: 100, duration: 120 },
+70             { step: 3, rfPower: 1000, pressure: 20, sf6Flow: 150, duration: 180 },
+71             // ... 추가 스텝들
+72         ];
+73
+74         if(this.currentStep <= recipe.length && this.isRunning) {
+75             const currentRecipeStep = recipe[this.currentStep - 1];
+```
+
+</div>
+<div>
+
+**공정 시작 및 레시피 실행**
+- **Line 53**: 모든 조건 통과 시 true 반환
+- **Line 56-64**: 공정 시작 메서드
+  - **Line 57**: 실행 상태를 true로 설정
+  - **Line 58**: 현재 스텝을 1로 초기화
+  - **Line 59-60**: UI 상태 표시를 'Running'으로 업데이트
+  - **Line 63**: 레시피 실행 메서드 호출
+
+- **Line 66-75**: 레시피 실행 메서드
+  - **Line 67-72**: 3단계 식각 레시피 정의
+    - **Step 1**: 낮은 파워로 전처리 (30초)
+    - **Step 2**: 중간 파워로 주 식각 (120초)
+    - **Step 3**: 높은 파워로 마무리 식각 (180초)
+  - **Line 74-75**: 현재 스텝이 유효하고 실행 중이면 스텝 실행
+
+</div>
+</div>
+
+---
+
+#### 인터랙션 설계 - Part 4
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```javascript {76-100}
+76             this.executeStep(currentRecipeStep);
+77         }
+78     }
+79
+80     executeStep(step) {
+81         const startTime = Date.now();
+82         const updateInterval = 100; // 100ms 업데이트
+83
+84         const stepExecution = setInterval(() => {
+85             const elapsed = Date.now() - startTime;
+86             const progress = Math.min(elapsed / (step.duration * 1000), 1);
+87
+88             // 파라미터 점진적 변화
+89             this.parameters.rfPower = this.interpolate(
+90                 this.parameters.rfPower, step.rfPower, progress
+91             );
+92             this.parameters.pressure = this.interpolate(
+93                 this.parameters.pressure, step.pressure, progress
+94             );
+95             this.parameters.sf6Flow = this.interpolate(
+96                 this.parameters.sf6Flow, step.sf6Flow, progress
+97             );
+98
+99             // UI 업데이트
+100            this.updateParameterDisplay();
+```
+
+</div>
+<div>
+
+**스텝 실행 및 파라미터 제어**
+- **Line 76-78**: 현재 레시피 스텝 실행 및 메서드 완료
+- **Line 80-82**: 개별 스텝 실행 메서드 시작
+  - **Line 81**: 스텝 시작 시간 기록
+  - **Line 82**: 100ms 간격으로 파라미터 업데이트
+
+- **Line 84-97**: 실시간 파라미터 제어 루프
+  - **Line 85-86**: 경과 시간과 진행률 계산
+  - **Line 89-97**: 파라미터 점진적 변화
+    - **interpolate 함수**: 현재값에서 목표값으로 부드러운 전환
+    - RF 파워, 압력, SF6 유량을 동시에 제어
+    - 급격한 변화 방지로 장비 보호
+
+- **Line 100**: UI 디스플레이 업데이트 호출
+
+</div>
+</div>
+
+---
+
+#### 인터랙션 설계 - Part 5
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```javascript {101-125}
+101            this.updateProgressDisplay();
+102
+103            // 스텝 완료 체크
+104            if(progress >= 1) {
+105                clearInterval(stepExecution);
+106                this.currentStep++;
+107
+108                if(this.currentStep <= 15 && this.isRunning) {
+109                    setTimeout(() => this.executeRecipe(), 1000);
+110                } else {
+111                    this.completeProcess();
+112                }
+113            }
+114        }, updateInterval);
+115    }
+116
+117    interpolate(current, target, progress) {
+118        return current + (target - current) * progress;
+119    }
+120
+121    updateParameterDisplay() {
+122        document.getElementById('rfPower').textContent = Math.round(this.parameters.rfPower);
+123        document.getElementById('pressure').textContent = this.parameters.pressure.toFixed(1);
+124        document.getElementById('sf6Flow').textContent = Math.round(this.parameters.sf6Flow);
+125        // ... 다른 파라미터들
+```
+
+</div>
+<div>
+
+**진행률 관리 및 디스플레이 업데이트**
+- **Line 101**: 진행률 바 업데이트
+- **Line 104-114**: 스텝 완료 처리
+  - **Line 104**: 진행률 100% 달성 확인
+  - **Line 105**: setInterval 정리로 메모리 누수 방지
+  - **Line 106**: 다음 스텝으로 진행
+  - **Line 108-112**: 전체 공정 진행 관리
+    - 15단계 미만이고 실행 중이면 1초 후 다음 스텝
+    - 완료 시 공정 종료 메서드 호출
+
+- **Line 117-119**: 선형 보간 함수
+  - 현재값과 목표값 사이의 부드러운 전환
+  - progress (0~1)에 따른 비례 계산
+
+- **Line 121-125**: 파라미터 디스플레이 업데이트
+  - RF 파워: 정수 표시, 압력: 소수점 1자리
+  - 실시간 모니터링을 위한 UI 반영
+
+</div>
+</div>
+
+---
+
+#### 인터랙션 설계 - Part 6
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```javascript {126-150}
+126    }
+127
+128    updateProgressDisplay() {
+129        const progressPercent = (this.currentStep / 15) * 100;
+130        document.getElementById('progressBar').style.width = `${progressPercent}%`;
+131        document.getElementById('currentStep').textContent = this.currentStep;
+132        document.getElementById('totalSteps').textContent = '15';
+133    }
+134
+135    emergencyStop() {
+136        this.isRunning = false;
+137        this.parameters.rfPower = 0;
+138        this.parameters.biasPower = 0;
+139
+140        // 모든 가스 차단
+141        this.parameters.sf6Flow = 0;
+142        this.parameters.o2Flow = 0;
+143        this.parameters.heFlow = 0;
+144
+145        // 긴급정지 알람
+146        this.addAlarm({
+147            id: Date.now(),
+148            priority: 'critical',
+149            message: 'EMERGENCY STOP ACTIVATED',
+150            timestamp: new Date().toISOString(),
+```
+
+</div>
+<div>
+
+**진행률 표시 및 긴급정지 처리**
+- **Line 128-133**: 진행률 디스플레이 업데이트
+  - **Line 129**: 전체 15단계 대비 백분율 계산
+  - **Line 130**: 진행률 바 폭 동적 조정
+  - **Line 131-132**: 현재/전체 스텝 숫자 표시
+
+- **Line 135-150**: 긴급정지 메서드
+  - **Line 136**: 실행 상태 즉시 중단
+  - **Line 137-138**: 모든 전력 공급 차단
+  - **Line 141-143**: 안전을 위한 가스 공급 완전 차단
+    - SF6 (식각 가스), O2 (산화 가스), He (퍼지 가스)
+  - **Line 146-150**: Critical 우선순위 알람 생성
+    - 고유 ID로 타임스탬프 사용
+    - ISO 형식의 정확한 시간 기록
+
+</div>
+</div>
+
+---
+
+#### 인터랙션 설계 - Part 7
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```javascript {151-175}
+151            acknowledged: false
+152        });
+153
+154        document.getElementById('processStatus').textContent = 'Emergency Stop';
+155        document.getElementById('processStatus').className = 'status-emergency';
+156    }
+157
+158    addAlarm(alarm) {
+159        this.alarms.unshift(alarm);
+160        this.updateAlarmDisplay();
+161
+162        // 소리 알림 (실제 시스템에서는 하드웨어 부저)
+163        if(alarm.priority === 'critical') {
+164            this.playAlarmSound('critical');
+165        }
+166    }
+167
+168    updateAlarmDisplay() {
+169        const alarmContainer = document.getElementById('alarmList');
+170        alarmContainer.innerHTML = '';
+171
+172        this.alarms.slice(0, 10).forEach(alarm => {
+173            const alarmElement = document.createElement('div');
+174            const alarmElement.className = `alarm-item alarm-${alarm.priority}`;
+175            alarmElement.innerHTML = `
+```
+
+</div>
+<div>
+
+**알람 시스템 구현**
+- **Line 151-155**: 긴급정지 상태 표시
+  - **Line 151**: 알람 미승인 상태로 초기화
+  - **Line 154-155**: UI 상태를 'Emergency Stop'으로 변경
+
+- **Line 158-166**: 알람 추가 메서드
+  - **Line 159**: 새 알람을 배열 맨 앞에 추가 (최신순)
+  - **Line 160**: 알람 디스플레이 즉시 업데이트
+  - **Line 163-165**: Critical 알람 시 음향 경고
+    - 실제 시스템에서는 하드웨어 부저 사용
+
+- **Line 168-175**: 알람 디스플레이 업데이트
+  - **Line 169-170**: 기존 알람 목록 초기화
+  - **Line 172**: 최신 10개 알람만 표시 (성능 최적화)
+  - **Line 173-175**: 동적 알람 요소 생성
+    - 우선순위별 CSS 클래스 적용
+
+</div>
+</div>
+
+---
+
+#### 인터랙션 설계 - Part 8
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```javascript {176-190}
+176                <div class="alarm-priority">${alarm.priority.toUpperCase()}</div>
+177                <div class="alarm-message">${alarm.message}</div>
+178                <div class="alarm-time">${new Date(alarm.timestamp).toLocaleTimeString()}</div>
+179                ${!alarm.acknowledged ? '<button class="ack-btn" onclick="acknowledgeAlarm(' + alarm.id + ')">ACK</button>' : ''}
+180            `;
+181            alarmContainer.appendChild(alarmElement);
+182        });
+183    }
+184 }
+185
+186 // 전역 함수
+187 function acknowledgeAlarm(alarmId) {
+188     const alarm = hmi.alarms.find(a => a.id === alarmId);
+189     if(alarm) {
+190         alarm.acknowledged = true;
+```
+
+</div>
+<div>
+
+**알람 표시 및 승인 처리**
+- **Line 176-180**: 알람 HTML 구조 생성
+  - **Line 176**: 우선순위를 대문자로 표시
+  - **Line 177**: 알람 메시지 내용
+  - **Line 178**: 발생 시간을 지역 시간으로 표시
+  - **Line 179**: 미승인 알람에만 ACK 버튼 표시
+    - 조건부 렌더링으로 UI 최적화
+
+- **Line 181-183**: DOM에 알람 요소 추가 및 메서드 완료
+
+- **Line 187-190**: 알람 승인 전역 함수
+  - **Line 188**: ID로 특정 알람 검색
+  - **Line 190**: 승인 상태로 변경
+
+HMI 시스템의 완전한 알람 관리 체계
+
+</div>
+</div>
+
+---
+
+#### 인터랙션 설계 - Part 9
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```javascript {191-195}
+191         alarm.acknowledgedBy = 'current_user';
+192         alarm.acknowledgedAt = new Date().toISOString();
+193         hmi.updateAlarmDisplay();
+194     }
+195 }
+196
+197 // HMI 시스템 초기화
+198 const hmi = new EtchEquipmentHMI();
+```
+
+</div>
+<div>
+
+**시스템 완성 및 초기화**
+- **Line 191-192**: 알람 승인 정보 기록
+  - **acknowledgedBy**: 승인한 사용자 정보
+  - **acknowledgedAt**: 승인 시각을 ISO 형식으로 기록
+
+- **Line 193**: 알람 디스플레이 즉시 업데이트
+  - ACK 버튼 제거 및 상태 반영
+
+- **Line 198**: HMI 시스템 인스턴스 생성
+  - 페이지 로드 시 자동으로 HMI 시스템 활성화
+  - 모든 이벤트 리스너와 모니터링 시작
+
+**완성된 HMI 시스템 특징:**
+- 실시간 파라미터 모니터링
+- 다단계 레시피 실행
+- 안전한 긴급정지 시스템
+- 체계적인 알람 관리
+
+</div>
+</div>
 
 #### 프로토타입 평가
 **휴리스틱 평가 체크리스트**:

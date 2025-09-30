@@ -7,6 +7,7 @@ Dynamically generates index.html based on available weeks in slides/ directory
 import os
 import re
 import json
+import shutil
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -410,23 +411,34 @@ Welcome to HCI/HMI Lecture slides.
 Please go back to select a week.`;
             }}
 
+            // Mapping for actual folder names
+            const weekFolders = {{
+                '01': 'week01-hci-hmi-theory',
+                '02': 'week02-csharp-wpf-basics',
+                '03': 'week03-csharp-realtime-data',
+                '04': 'week04-csharp-advanced-ui',
+                '05': 'week05-csharp-test-deploy',
+                '06': 'week06-python-pyside6-basics',
+                '07': 'week07-python-realtime-data',
+                '08': 'week08-python-advanced-features',
+                '09': 'week09-python-deployment',
+                '10': 'week10-imgui-basics',
+                '11': 'week11-imgui-advanced',
+                '12': 'week12-imgui-advanced-features',
+                '13': 'week13-imgui-integrated-project'
+            }};
+
             try {{
-                // Try both formats: weekXX and weekXX-description
-                let response = await fetch(`/slides/week${{week.padStart(2, '0')}}/slides.md`);
-                if (!response.ok) {{
-                    // Try with description format by scanning slides directory
-                    const slidesResponse = await fetch('/slides/');
-                    if (slidesResponse.ok) {{
-                        const slidesContent = await slidesResponse.text();
-                        const weekPattern = new RegExp(`week${{week.padStart(2, '0')}}-[^"]*`, 'g');
-                        const match = slidesContent.match(weekPattern);
-                        if (match && match[0]) {{
-                            response = await fetch(`/slides/${{match[0]}}/slides.md`);
-                        }}
-                    }}
-                }}
-                if (!response.ok) {{
+                const paddedWeek = week.padStart(2, '0');
+                const folderName = weekFolders[paddedWeek];
+
+                if (!folderName) {{
                     throw new Error(`Week ${{week}} not found`);
+                }}
+
+                const response = await fetch(`/slides/${{folderName}}/slides.md`);
+                if (!response.ok) {{
+                    throw new Error(`Week ${{week}} slides not found`);
                 }}
                 return await response.text();
             }} catch (error) {{
@@ -873,13 +885,44 @@ Please check back later or contact the instructor.
 
     return html_content
 
+def copy_slides_to_src(project_root: Path):
+    """
+    Copy slides directory to src directory for Vite to serve
+
+    Args:
+        project_root: Path to project root directory
+    """
+    source_slides = project_root / "slides"
+    dest_slides = project_root / "src" / "slides"
+
+    print(f"📁 Copying slides from {source_slides} to {dest_slides}")
+
+    # Remove existing slides directory in src if it exists
+    if dest_slides.exists():
+        shutil.rmtree(dest_slides)
+        print(f"🗑️  Removed existing {dest_slides}")
+
+    # Copy slides directory
+    if source_slides.exists():
+        shutil.copytree(source_slides, dest_slides)
+        print(f"✅ Successfully copied slides to src directory")
+
+        # Count copied files
+        slide_files = list(dest_slides.glob("*/slides.md"))
+        print(f"📄 Copied {len(slide_files)} slide files")
+    else:
+        print(f"❌ Source slides directory not found at {source_slides}")
+
 def main():
-    """Main function to generate index.html"""
+    """Main function to generate index.html and copy slides"""
 
     # Get script directory and project root
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
     slides_dir = project_root / "slides"
+
+    # Copy slides to src directory first
+    copy_slides_to_src(project_root)
 
     print(f"🔍 Scanning weeks in: {slides_dir}")
 

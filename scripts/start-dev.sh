@@ -26,6 +26,17 @@ if [ ! -d "node_modules" ]; then
     fi
 fi
 
+# Check if Python3 is available and run bootstrap.py
+echo "Running bootstrap.py to sync slides..."
+if command -v python3 &> /dev/null; then
+    python3 tools/bootstrap.py
+    if [ $? -ne 0 ]; then
+        echo "Warning: bootstrap.py failed, but continuing..."
+    fi
+else
+    echo "Warning: Python3 not found, skipping bootstrap.py"
+fi
+
 echo "Starting Vite development server..."
 echo "Open your browser and go to: http://localhost:5173"
 echo "Press Ctrl+C to stop the server"

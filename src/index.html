@@ -7,8 +7,8 @@
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/dist/reveal.css">
     <link rel="stylesheet" id="theme-link" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/dist/theme/white.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/plugin/highlight/monokai.css">
     <link rel="stylesheet" href="/themes/custom.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.0.4/plugin/highlight/monokai.css">
     <link rel="stylesheet" href="/css/main.css">
 </head>
 
@@ -352,10 +352,9 @@ $">
         }
 
         function loadCustomThemeCSS() {
-            // Force remove existing custom theme CSS first
-            const existingLink = document.getElementById('custom-theme-css');
-            if (existingLink) {
-                existingLink.remove();
+            // Check if custom theme CSS is already loaded
+            if (document.getElementById('custom-theme-css')) {
+                return;
             }
 
             const link = document.createElement('link');
@@ -363,10 +362,6 @@ $">
             link.rel = 'stylesheet';
             link.href = '/themes/custom.css';
             document.head.appendChild(link);
-
-            // Also ensure body has correct theme class
-            document.body.className = document.body.className.replace(/theme-\w+/g, '');
-            document.body.classList.add('theme-custom');
         }
 
         function removeCustomThemeCSS() {
@@ -435,11 +430,10 @@ $">
                 // Apply theme
                 updateTheme(currentTheme);
 
-                // Force reload theme after initialization
+                // Apply custom styling
                 setTimeout(() => {
-                    loadCustomThemeCSS();
                     applyCustomStyling();
-                }, 500);
+                }, 100);
 
                 // Update page title
                 document.title = `Week ${weekParam} - HCI/HMI Lecture`;

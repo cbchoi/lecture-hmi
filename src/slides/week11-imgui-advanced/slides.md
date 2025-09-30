@@ -1607,3 +1607,1526 @@ private:
 
 } // namespace SemiconductorHMI
 ```
+
+---
+
+## 실습 1: 고급 3D 시각화 및 OpenGL 통합
+
+### 실습 목표
+- ImGui와 OpenGL을 통합한 3D 렌더링 시스템 구현
+- 반도체 장비의 3D 모델링 및 실시간 시각화
+- 카메라 컨트롤과 상호작용 구현
+- 셰이더 기반 고급 시각 효과
+
+### 3D 카메라 시스템 구현
+
+#### 1. 고급 카메라 컨트롤러
+```cpp
+// Advanced3DCamera.h
+#pragma once
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <imgui.h>
+
+namespace SemiconductorHMI {
+
+enum class CameraMode {
+    FreeRotation,
+    OrbitTarget,
+    FirstPerson,
+    TopDown
+};
+
+class Advanced3DCamera {
+private:
+    // 카메라 상태
+    glm::vec3 position;
+    glm::vec3 target;
+    glm::vec3 up;
+    glm::quat orientation;
+
+    // 뷰 파라미터
+    float fov;
+    float aspect_ratio;
+    float near_plane;
+    float far_plane;
+
+    // 컨트롤 상태
+    CameraMode mode;
+    bool is_dragging;
+    ImVec2 last_mouse_pos;
+    float orbit_distance;
+    float rotation_speed;
+    float zoom_speed;
+    float pan_speed;
+
+    // 애니메이션
+    glm::vec3 animation_start_pos;
+    glm::vec3 animation_target_pos;
+    glm::quat animation_start_rot;
+    glm::quat animation_target_rot;
+    float animation_time;
+    float animation_duration;
+    bool is_animating;
+
+public:
+    Advanced3DCamera(float viewport_width, float viewport_height)
+        : position(0.0f, 5.0f, 10.0f)
+        , target(0.0f, 0.0f, 0.0f)
+        , up(0.0f, 1.0f, 0.0f)
+        , orientation(1.0f, 0.0f, 0.0f, 0.0f)
+        , fov(45.0f)
+        , aspect_ratio(viewport_width / viewport_height)
+        , near_plane(0.1f)
+        , far_plane(1000.0f)
+        , mode(CameraMode::OrbitTarget)
+        , is_dragging(false)
+        , orbit_distance(15.0f)
+        , rotation_speed(0.5f)
+        , zoom_speed(1.0f)
+        , pan_speed(0.01f)
+        , animation_time(0.0f)
+        , animation_duration(1.0f)
+        , is_animating(false)
+    {
+        UpdateOrbitPosition();
+    }
+
+    void Update(float delta_time) {
+        if (is_animating) {
+            UpdateAnimation(delta_time);
+        }
+
+        HandleInput(delta_time);
+        UpdateMatrices();
+    }
+
+    void HandleInput(float delta_time) {
+        ImGuiIO& io = ImGui::GetIO();
+        ImVec2 mouse_pos = io.MousePos;
+        ImVec2 mouse_delta = ImVec2(mouse_pos.x - last_mouse_pos.x,
+                                   mouse_pos.y - last_mouse_pos.y);
+
+        // 마우스 드래그 처리
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+            if (!is_dragging) {
+                is_dragging = true;
+                last_mouse_pos = mouse_pos;
+            } else {
+                HandleMouseDrag(mouse_delta, delta_time);
+            }
+        } else {
+            is_dragging = false;
+        }
+
+        // 마우스 휠 줌
+        if (io.MouseWheel != 0.0f) {
+            HandleZoom(io.MouseWheel, delta_time);
+        }
+
+        // 키보드 이동
+        HandleKeyboard(delta_time);
+
+        last_mouse_pos = mouse_pos;
+    }
+
+    void HandleMouseDrag(ImVec2 delta, float delta_time) {
+        switch (mode) {
+        case CameraMode::OrbitTarget:
+            HandleOrbitDrag(delta, delta_time);
+            break;
+        case CameraMode::FreeRotation:
+            HandleFreeDrag(delta, delta_time);
+            break;
+        case CameraMode::FirstPerson:
+            HandleFirstPersonDrag(delta, delta_time);
+            break;
+        }
+    }
+
+    void HandleOrbitDrag(ImVec2 delta, float delta_time) {
+        // 구면 좌표계에서 회전
+        float theta_delta = -delta.x * rotation_speed * delta_time;
+        float phi_delta = -delta.y * rotation_speed * delta_time;
+
+        // 현재 구면 좌표 계산
+        glm::vec3 to_camera = position - target;
+        float radius = glm::length(to_camera);
+
+        float theta = atan2(to_camera.z, to_camera.x);
+        float phi = acos(to_camera.y / radius);
+
+        // 새로운 각도 적용
+        theta += theta_delta;
+        phi += phi_delta;
+        phi = glm::clamp(phi, 0.1f, 3.14159f - 0.1f); // 상하 제한
+
+        // 새로운 위치 계산
+        position.x = target.x + radius * sin(phi) * cos(theta);
+        position.y = target.y + radius * cos(phi);
+        position.z = target.z + radius * sin(phi) * sin(theta);
+
+        orbit_distance = radius;
+    }
+
+    void HandleFreeDrag(ImVec2 delta, float delta_time) {
+        // 쿼터니언 기반 자유 회전
+        float yaw_delta = -delta.x * rotation_speed * delta_time;
+        float pitch_delta = -delta.y * rotation_speed * delta_time;
+
+        glm::quat yaw_rotation = glm::angleAxis(yaw_delta, glm::vec3(0, 1, 0));
+        glm::quat pitch_rotation = glm::angleAxis(pitch_delta, glm::vec3(1, 0, 0));
+
+        orientation = yaw_rotation * orientation * pitch_rotation;
+        orientation = glm::normalize(orientation);
+
+        // 위치 업데이트
+        glm::mat4 rotation_matrix = glm::mat4_cast(orientation);
+        glm::vec3 forward = -glm::vec3(rotation_matrix[2]);
+        target = position + forward * orbit_distance;
+    }
+
+    void HandleFirstPersonDrag(ImVec2 delta, float delta_time) {
+        // 1인칭 시점 회전
+        float yaw_delta = -delta.x * rotation_speed * delta_time;
+        float pitch_delta = -delta.y * rotation_speed * delta_time;
+
+        glm::quat yaw_rotation = glm::angleAxis(yaw_delta, up);
+        glm::quat pitch_rotation = glm::angleAxis(pitch_delta, glm::vec3(1, 0, 0));
+
+        orientation = yaw_rotation * orientation * pitch_rotation;
+        orientation = glm::normalize(orientation);
+
+        // 타겟 업데이트
+        glm::mat4 rotation_matrix = glm::mat4_cast(orientation);
+        glm::vec3 forward = -glm::vec3(rotation_matrix[2]);
+        target = position + forward;
+    }
+
+    void HandleZoom(float wheel_delta, float delta_time) {
+        switch (mode) {
+        case CameraMode::OrbitTarget:
+            // 궤도 거리 조정
+            orbit_distance -= wheel_delta * zoom_speed;
+            orbit_distance = glm::clamp(orbit_distance, 1.0f, 100.0f);
+            UpdateOrbitPosition();
+            break;
+        case CameraMode::FirstPerson:
+        case CameraMode::FreeRotation:
+            // FOV 조정
+            fov -= wheel_delta * 2.0f;
+            fov = glm::clamp(fov, 10.0f, 120.0f);
+            break;
+        }
+    }
+
+    void HandleKeyboard(float delta_time) {
+        ImGuiIO& io = ImGui::GetIO();
+        float move_speed = 5.0f * delta_time;
+
+        glm::vec3 forward = glm::normalize(target - position);
+        glm::vec3 right = glm::normalize(glm::cross(forward, up));
+
+        if (io.KeysDown[ImGuiKey_W]) position += forward * move_speed;
+        if (io.KeysDown[ImGuiKey_S]) position -= forward * move_speed;
+        if (io.KeysDown[ImGuiKey_A]) position -= right * move_speed;
+        if (io.KeysDown[ImGuiKey_D]) position += right * move_speed;
+        if (io.KeysDown[ImGuiKey_Q]) position += up * move_speed;
+        if (io.KeysDown[ImGuiKey_E]) position -= up * move_speed;
+
+        if (mode == CameraMode::FirstPerson) {
+            target = position + forward;
+        }
+    }
+
+    void UpdateOrbitPosition() {
+        glm::vec3 to_camera = glm::normalize(position - target);
+        position = target + to_camera * orbit_distance;
+    }
+
+    void UpdateMatrices() {
+        // 뷰 매트릭스 계산
+        view_matrix = glm::lookAt(position, target, up);
+
+        // 프로젝션 매트릭스 계산
+        projection_matrix = glm::perspective(glm::radians(fov), aspect_ratio, near_plane, far_plane);
+    }
+
+    void AnimateTo(glm::vec3 new_position, glm::vec3 new_target, float duration = 1.0f) {
+        animation_start_pos = position;
+        animation_target_pos = new_position;
+        animation_start_rot = glm::quatLookAt(glm::normalize(target - position), up);
+        animation_target_rot = glm::quatLookAt(glm::normalize(new_target - new_position), up);
+
+        animation_time = 0.0f;
+        animation_duration = duration;
+        is_animating = true;
+    }
+
+    void UpdateAnimation(float delta_time) {
+        animation_time += delta_time;
+        float t = glm::clamp(animation_time / animation_duration, 0.0f, 1.0f);
+
+        // 부드러운 보간을 위한 easing function
+        float eased_t = EaseInOutCubic(t);
+
+        // 위치 보간
+        position = glm::mix(animation_start_pos, animation_target_pos, eased_t);
+
+        // 회전 보간 (slerp)
+        glm::quat current_rot = glm::slerp(animation_start_rot, animation_target_rot, eased_t);
+        glm::vec3 forward = current_rot * glm::vec3(0, 0, -1);
+        target = position + forward * orbit_distance;
+
+        if (t >= 1.0f) {
+            is_animating = false;
+        }
+    }
+
+    float EaseInOutCubic(float t) {
+        return t < 0.5f ? 4 * t * t * t : 1 - pow(-2 * t + 2, 3) / 2;
+    }
+
+    // 프리셋 카메라 위치들
+    void SetPresetView(const std::string& preset) {
+        if (preset == "Front") {
+            AnimateTo(glm::vec3(0, 0, 15), glm::vec3(0, 0, 0));
+        } else if (preset == "Top") {
+            AnimateTo(glm::vec3(0, 20, 0), glm::vec3(0, 0, 0));
+        } else if (preset == "Side") {
+            AnimateTo(glm::vec3(15, 5, 0), glm::vec3(0, 0, 0));
+        } else if (preset == "Isometric") {
+            AnimateTo(glm::vec3(10, 10, 10), glm::vec3(0, 0, 0));
+        }
+    }
+
+    // Getter 메서드들
+    glm::mat4 GetViewMatrix() const { return view_matrix; }
+    glm::mat4 GetProjectionMatrix() const { return projection_matrix; }
+    glm::vec3 GetPosition() const { return position; }
+    glm::vec3 GetTarget() const { return target; }
+    float GetFOV() const { return fov; }
+    CameraMode GetMode() const { return mode; }
+
+    // Setter 메서드들
+    void SetMode(CameraMode new_mode) { mode = new_mode; }
+    void SetAspectRatio(float new_aspect) { aspect_ratio = new_aspect; }
+    void SetTarget(glm::vec3 new_target) {
+        target = new_target;
+        if (mode == CameraMode::OrbitTarget) {
+            UpdateOrbitPosition();
+        }
+    }
+
+private:
+    glm::mat4 view_matrix;
+    glm::mat4 projection_matrix;
+};
+
+} // namespace SemiconductorHMI
+```
+
+### 3D 모델 렌더링 시스템
+
+#### 2. 메시 렌더러 구현
+```cpp
+// MeshRenderer.h
+#pragma once
+#include <vector>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <glm/glm.hpp>
+#include <GL/gl3w.h>
+
+namespace SemiconductorHMI {
+
+struct Vertex {
+    glm::vec3 position;
+    glm::vec3 normal;
+    glm::vec2 tex_coords;
+    glm::vec3 tangent;
+};
+
+struct Material {
+    glm::vec3 ambient;
+    glm::vec3 diffuse;
+    glm::vec3 specular;
+    float shininess;
+
+    GLuint diffuse_texture;
+    GLuint normal_texture;
+    GLuint specular_texture;
+
+    Material() : ambient(0.2f), diffuse(0.8f), specular(1.0f), shininess(32.0f),
+                diffuse_texture(0), normal_texture(0), specular_texture(0) {}
+};
+
+class Mesh {
+private:
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+    Material material;
+
+    GLuint VAO, VBO, EBO;
+    bool initialized;
+
+public:
+    Mesh(std::vector<Vertex> verts, std::vector<unsigned int> inds, Material mat)
+        : vertices(std::move(verts)), indices(std::move(inds)), material(mat), initialized(false) {
+        SetupMesh();
+    }
+
+    ~Mesh() {
+        if (initialized) {
+            glDeleteVertexArrays(1, &VAO);
+            glDeleteBuffers(1, &VBO);
+            glDeleteBuffers(1, &EBO);
+        }
+    }
+
+    void Draw(GLuint shader_program) {
+        // 머티리얼 바인딩
+        BindMaterial(shader_program);
+
+        // 메시 그리기
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+    }
+
+private:
+    void SetupMesh() {
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+
+        glBindVertexArray(VAO);
+
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), &vertices[0], GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
+
+        // 정점 속성 설정
+        // Position
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+        // Normal
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+        // Texture Coords
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, tex_coords));
+        // Tangent
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, tangent));
+
+        glBindVertexArray(0);
+        initialized = true;
+    }
+
+    void BindMaterial(GLuint shader_program) {
+        glUniform3fv(glGetUniformLocation(shader_program, "material.ambient"), 1, &material.ambient[0]);
+        glUniform3fv(glGetUniformLocation(shader_program, "material.diffuse"), 1, &material.diffuse[0]);
+        glUniform3fv(glGetUniformLocation(shader_program, "material.specular"), 1, &material.specular[0]);
+        glUniform1f(glGetUniformLocation(shader_program, "material.shininess"), material.shininess);
+
+        // 텍스처 바인딩
+        if (material.diffuse_texture) {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, material.diffuse_texture);
+            glUniform1i(glGetUniformLocation(shader_program, "material.texture_diffuse"), 0);
+        }
+
+        if (material.normal_texture) {
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, material.normal_texture);
+            glUniform1i(glGetUniformLocation(shader_program, "material.texture_normal"), 1);
+        }
+
+        if (material.specular_texture) {
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, material.specular_texture);
+            glUniform1i(glGetUniformLocation(shader_program, "material.texture_specular"), 2);
+        }
+    }
+};
+
+class Model {
+private:
+    std::vector<std::unique_ptr<Mesh>> meshes;
+    std::string directory;
+    glm::mat4 model_matrix;
+
+public:
+    Model() : model_matrix(1.0f) {}
+
+    void AddMesh(std::unique_ptr<Mesh> mesh) {
+        meshes.push_back(std::move(mesh));
+    }
+
+    void Draw(GLuint shader_program) {
+        for (auto& mesh : meshes) {
+            mesh->Draw(shader_program);
+        }
+    }
+
+    void SetTransform(const glm::mat4& transform) {
+        model_matrix = transform;
+    }
+
+    glm::mat4 GetTransform() const {
+        return model_matrix;
+    }
+
+    // 기본 도형 생성 메서드들
+    static std::unique_ptr<Model> CreateCube(float size = 1.0f) {
+        auto model = std::make_unique<Model>();
+
+        std::vector<Vertex> vertices = {
+            // Front face
+            {{-size, -size,  size}, {0, 0, 1}, {0, 0}, {1, 0, 0}},
+            {{ size, -size,  size}, {0, 0, 1}, {1, 0}, {1, 0, 0}},
+            {{ size,  size,  size}, {0, 0, 1}, {1, 1}, {1, 0, 0}},
+            {{-size,  size,  size}, {0, 0, 1}, {0, 1}, {1, 0, 0}},
+            // Back face
+            {{-size, -size, -size}, {0, 0, -1}, {1, 0}, {-1, 0, 0}},
+            {{-size,  size, -size}, {0, 0, -1}, {1, 1}, {-1, 0, 0}},
+            {{ size,  size, -size}, {0, 0, -1}, {0, 1}, {-1, 0, 0}},
+            {{ size, -size, -size}, {0, 0, -1}, {0, 0}, {-1, 0, 0}},
+        };
+
+        std::vector<unsigned int> indices = {
+            0, 1, 2, 2, 3, 0,   // front
+            4, 5, 6, 6, 7, 4,   // back
+            3, 2, 6, 6, 5, 3,   // top
+            4, 7, 1, 1, 0, 4,   // bottom
+            4, 0, 3, 3, 5, 4,   // left
+            1, 7, 6, 6, 2, 1    // right
+        };
+
+        Material mat;
+        mat.diffuse = glm::vec3(0.7f, 0.7f, 0.7f);
+        mat.specular = glm::vec3(0.5f, 0.5f, 0.5f);
+        mat.shininess = 32.0f;
+
+        auto mesh = std::make_unique<Mesh>(std::move(vertices), std::move(indices), mat);
+        model->AddMesh(std::move(mesh));
+
+        return model;
+    }
+
+    static std::unique_ptr<Model> CreateSphere(float radius = 1.0f, int segments = 32) {
+        auto model = std::make_unique<Model>();
+
+        std::vector<Vertex> vertices;
+        std::vector<unsigned int> indices;
+
+        // 구체 정점 생성
+        for (int i = 0; i <= segments; ++i) {
+            float theta = i * glm::pi<float>() / segments;
+
+            for (int j = 0; j <= segments; ++j) {
+                float phi = j * 2 * glm::pi<float>() / segments;
+
+                Vertex vertex;
+                vertex.position.x = radius * sin(theta) * cos(phi);
+                vertex.position.y = radius * cos(theta);
+                vertex.position.z = radius * sin(theta) * sin(phi);
+
+                vertex.normal = glm::normalize(vertex.position);
+                vertex.tex_coords.x = (float)j / segments;
+                vertex.tex_coords.y = (float)i / segments;
+
+                // 탄젠트 계산
+                vertex.tangent.x = -sin(phi);
+                vertex.tangent.y = 0;
+                vertex.tangent.z = cos(phi);
+
+                vertices.push_back(vertex);
+            }
+        }
+
+        // 인덱스 생성
+        for (int i = 0; i < segments; ++i) {
+            for (int j = 0; j < segments; ++j) {
+                int current = i * (segments + 1) + j;
+                int next = current + segments + 1;
+
+                indices.push_back(current);
+                indices.push_back(next);
+                indices.push_back(current + 1);
+
+                indices.push_back(current + 1);
+                indices.push_back(next);
+                indices.push_back(next + 1);
+            }
+        }
+
+        Material mat;
+        mat.diffuse = glm::vec3(0.8f, 0.3f, 0.3f);
+        mat.specular = glm::vec3(1.0f, 1.0f, 1.0f);
+        mat.shininess = 64.0f;
+
+        auto mesh = std::make_unique<Mesh>(std::move(vertices), std::move(indices), mat);
+        model->AddMesh(std::move(mesh));
+
+        return model;
+    }
+
+    static std::unique_ptr<Model> CreateCylinder(float radius = 1.0f, float height = 2.0f, int segments = 32) {
+        auto model = std::make_unique<Model>();
+
+        std::vector<Vertex> vertices;
+        std::vector<unsigned int> indices;
+
+        // 실린더 측면 정점 생성
+        for (int i = 0; i <= segments; ++i) {
+            float angle = i * 2 * glm::pi<float>() / segments;
+            float x = cos(angle);
+            float z = sin(angle);
+
+            // 아래쪽 정점
+            Vertex bottom_vertex;
+            bottom_vertex.position = glm::vec3(x * radius, -height/2, z * radius);
+            bottom_vertex.normal = glm::vec3(x, 0, z);
+            bottom_vertex.tex_coords = glm::vec2((float)i / segments, 0);
+            bottom_vertex.tangent = glm::vec3(-z, 0, x);
+            vertices.push_back(bottom_vertex);
+
+            // 위쪽 정점
+            Vertex top_vertex;
+            top_vertex.position = glm::vec3(x * radius, height/2, z * radius);
+            top_vertex.normal = glm::vec3(x, 0, z);
+            top_vertex.tex_coords = glm::vec2((float)i / segments, 1);
+            top_vertex.tangent = glm::vec3(-z, 0, x);
+            vertices.push_back(top_vertex);
+        }
+
+        // 측면 인덱스 생성
+        for (int i = 0; i < segments; ++i) {
+            int current = i * 2;
+            int next = (i + 1) * 2;
+
+            // 하단 삼각형
+            indices.push_back(current);
+            indices.push_back(next);
+            indices.push_back(current + 1);
+
+            // 상단 삼각형
+            indices.push_back(current + 1);
+            indices.push_back(next);
+            indices.push_back(next + 1);
+        }
+
+        // 상하 뚜껑 정점 및 인덱스 추가 (생략 - 복잡성을 위해)
+
+        Material mat;
+        mat.diffuse = glm::vec3(0.3f, 0.8f, 0.3f);
+        mat.specular = glm::vec3(0.7f, 0.7f, 0.7f);
+        mat.shininess = 32.0f;
+
+        auto mesh = std::make_unique<Mesh>(std::move(vertices), std::move(indices), mat);
+        model->AddMesh(std::move(mesh));
+
+        return model;
+    }
+};
+
+} // namespace SemiconductorHMI
+```
+
+---
+
+## 실습 2: 물리 기반 렌더링 (PBR) 구현
+
+### 실습 목표
+- 물리 기반 렌더링 셰이더 구현
+- 머티리얼 시스템 확장
+- 환경 매핑 및 IBL (Image-Based Lighting)
+- 실시간 그림자 시스템
+
+### PBR 셰이더 시스템
+
+#### 1. PBR 셰이더 구현
+```cpp
+// PBRShader.h
+#pragma once
+#include <string>
+#include <glm/glm.hpp>
+#include <GL/gl3w.h>
+
+namespace SemiconductorHMI {
+
+class PBRShader {
+private:
+    GLuint program_id;
+
+    // 유니폼 위치 캐시
+    GLint mvp_matrix_location;
+    GLint model_matrix_location;
+    GLint view_matrix_location;
+    GLint projection_matrix_location;
+    GLint normal_matrix_location;
+
+    GLint camera_pos_location;
+    GLint light_positions_location;
+    GLint light_colors_location;
+    GLint light_count_location;
+
+    GLint albedo_location;
+    GLint metallic_location;
+    GLint roughness_location;
+    GLint ao_location;
+
+public:
+    PBRShader() : program_id(0) {}
+
+    bool Initialize() {
+        const char* vertex_shader = R"(
+        #version 450 core
+
+        layout (location = 0) in vec3 aPos;
+        layout (location = 1) in vec3 aNormal;
+        layout (location = 2) in vec2 aTexCoords;
+        layout (location = 3) in vec3 aTangent;
+
+        uniform mat4 uModel;
+        uniform mat4 uView;
+        uniform mat4 uProjection;
+        uniform mat3 uNormalMatrix;
+
+        out vec3 FragPos;
+        out vec3 Normal;
+        out vec2 TexCoords;
+        out vec3 Tangent;
+        out vec3 Bitangent;
+
+        void main() {
+            FragPos = vec3(uModel * vec4(aPos, 1.0));
+            Normal = uNormalMatrix * aNormal;
+            TexCoords = aTexCoords;
+            Tangent = uNormalMatrix * aTangent;
+            Bitangent = cross(Normal, Tangent);
+
+            gl_Position = uProjection * uView * vec4(FragPos, 1.0);
+        }
+        )";
+
+        const char* fragment_shader = R"(
+        #version 450 core
+
+        in vec3 FragPos;
+        in vec3 Normal;
+        in vec2 TexCoords;
+        in vec3 Tangent;
+        in vec3 Bitangent;
+
+        uniform vec3 uCameraPos;
+        uniform vec3 uLightPositions[4];
+        uniform vec3 uLightColors[4];
+        uniform int uLightCount;
+
+        uniform vec3 uAlbedo;
+        uniform float uMetallic;
+        uniform float uRoughness;
+        uniform float uAO;
+
+        uniform sampler2D uAlbedoMap;
+        uniform sampler2D uNormalMap;
+        uniform sampler2D uMetallicMap;
+        uniform sampler2D uRoughnessMap;
+        uniform sampler2D uAOMap;
+
+        out vec4 FragColor;
+
+        const float PI = 3.14159265359;
+
+        // 분산 함수 (Normal Distribution Function)
+        float DistributionGGX(vec3 N, vec3 H, float roughness) {
+            float a = roughness * roughness;
+            float a2 = a * a;
+            float NdotH = max(dot(N, H), 0.0);
+            float NdotH2 = NdotH * NdotH;
+
+            float num = a2;
+            float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+            denom = PI * denom * denom;
+
+            return num / denom;
+        }
+
+        // 기하학적 셰도잉 함수
+        float GeometrySchlickGGX(float NdotV, float roughness) {
+            float r = (roughness + 1.0);
+            float k = (r * r) / 8.0;
+
+            float num = NdotV;
+            float denom = NdotV * (1.0 - k) + k;
+
+            return num / denom;
+        }
+
+        float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
+            float NdotV = max(dot(N, V), 0.0);
+            float NdotL = max(dot(N, L), 0.0);
+            float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+            float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+
+            return ggx1 * ggx2;
+        }
+
+        // 프레넬 반사 계수
+        vec3 FresnelSchlick(float cosTheta, vec3 F0) {
+            return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+        }
+
+        vec3 GetNormalFromMap() {
+            vec3 tangentNormal = texture(uNormalMap, TexCoords).xyz * 2.0 - 1.0;
+
+            vec3 N = normalize(Normal);
+            vec3 T = normalize(Tangent);
+            vec3 B = normalize(Bitangent);
+            mat3 TBN = mat3(T, B, N);
+
+            return normalize(TBN * tangentNormal);
+        }
+
+        void main() {
+            // 머티리얼 속성 샘플링
+            vec3 albedo = pow(texture(uAlbedoMap, TexCoords).rgb * uAlbedo, 2.2);
+            float metallic = texture(uMetallicMap, TexCoords).r * uMetallic;
+            float roughness = texture(uRoughnessMap, TexCoords).r * uRoughness;
+            float ao = texture(uAOMap, TexCoords).r * uAO;
+
+            // 법선 벡터 계산
+            vec3 N = GetNormalFromMap();
+            vec3 V = normalize(uCameraPos - FragPos);
+
+            // F0 계산 (금속의 경우 알베도, 비금속의 경우 0.04)
+            vec3 F0 = vec3(0.04);
+            F0 = mix(F0, albedo, metallic);
+
+            vec3 Lo = vec3(0.0);
+
+            // 모든 광원에 대한 계산
+            for(int i = 0; i < uLightCount; ++i) {
+                vec3 L = normalize(uLightPositions[i] - FragPos);
+                vec3 H = normalize(V + L);
+                float distance = length(uLightPositions[i] - FragPos);
+                float attenuation = 1.0 / (distance * distance);
+                vec3 radiance = uLightColors[i] * attenuation;
+
+                // Cook-Torrance BRDF
+                float NDF = DistributionGGX(N, H, roughness);
+                float G = GeometrySmith(N, V, L, roughness);
+                vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
+
+                vec3 kS = F;
+                vec3 kD = vec3(1.0) - kS;
+                kD *= 1.0 - metallic;
+
+                vec3 numerator = NDF * G * F;
+                float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+                vec3 specular = numerator / denominator;
+
+                float NdotL = max(dot(N, L), 0.0);
+                Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+            }
+
+            // 환경광 (간단한 IBL 근사)
+            vec3 ambient = vec3(0.03) * albedo * ao;
+            vec3 color = ambient + Lo;
+
+            // HDR 톤매핑 및 감마 보정
+            color = color / (color + vec3(1.0));
+            color = pow(color, vec3(1.0/2.2));
+
+            FragColor = vec4(color, 1.0);
+        }
+        )";
+
+        program_id = CreateShaderProgram(vertex_shader, fragment_shader);
+        if (program_id == 0) return false;
+
+        // 유니폼 위치 캐시
+        CacheUniformLocations();
+
+        return true;
+    }
+
+    void Use() {
+        glUseProgram(program_id);
+    }
+
+    void SetMatrices(const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection) {
+        glUniformMatrix4fv(model_matrix_location, 1, GL_FALSE, &model[0][0]);
+        glUniformMatrix4fv(view_matrix_location, 1, GL_FALSE, &view[0][0]);
+        glUniformMatrix4fv(projection_matrix_location, 1, GL_FALSE, &projection[0][0]);
+
+        glm::mat3 normal_matrix = glm::transpose(glm::inverse(glm::mat3(model)));
+        glUniformMatrix3fv(normal_matrix_location, 1, GL_FALSE, &normal_matrix[0][0]);
+    }
+
+    void SetCamera(const glm::vec3& camera_pos) {
+        glUniform3fv(camera_pos_location, 1, &camera_pos[0]);
+    }
+
+    void SetLights(const std::vector<glm::vec3>& positions, const std::vector<glm::vec3>& colors) {
+        int count = std::min((int)positions.size(), 4);
+        glUniform1i(light_count_location, count);
+
+        if (count > 0) {
+            glUniform3fv(light_positions_location, count, &positions[0][0]);
+            glUniform3fv(light_colors_location, count, &colors[0][0]);
+        }
+    }
+
+    void SetMaterial(const glm::vec3& albedo, float metallic, float roughness, float ao) {
+        glUniform3fv(albedo_location, 1, &albedo[0]);
+        glUniform1f(metallic_location, metallic);
+        glUniform1f(roughness_location, roughness);
+        glUniform1f(ao_location, ao);
+    }
+
+private:
+    void CacheUniformLocations() {
+        model_matrix_location = glGetUniformLocation(program_id, "uModel");
+        view_matrix_location = glGetUniformLocation(program_id, "uView");
+        projection_matrix_location = glGetUniformLocation(program_id, "uProjection");
+        normal_matrix_location = glGetUniformLocation(program_id, "uNormalMatrix");
+
+        camera_pos_location = glGetUniformLocation(program_id, "uCameraPos");
+        light_positions_location = glGetUniformLocation(program_id, "uLightPositions");
+        light_colors_location = glGetUniformLocation(program_id, "uLightColors");
+        light_count_location = glGetUniformLocation(program_id, "uLightCount");
+
+        albedo_location = glGetUniformLocation(program_id, "uAlbedo");
+        metallic_location = glGetUniformLocation(program_id, "uMetallic");
+        roughness_location = glGetUniformLocation(program_id, "uRoughness");
+        ao_location = glGetUniformLocation(program_id, "uAO");
+    }
+
+    GLuint CreateShaderProgram(const char* vertex_source, const char* fragment_source) {
+        // 셰이더 컴파일 코드 (이전 예제와 동일)
+        GLuint vertex_shader = CompileShader(GL_VERTEX_SHADER, vertex_source);
+        GLuint fragment_shader = CompileShader(GL_FRAGMENT_SHADER, fragment_source);
+
+        if (vertex_shader == 0 || fragment_shader == 0) {
+            return 0;
+        }
+
+        GLuint program = glCreateProgram();
+        glAttachShader(program, vertex_shader);
+        glAttachShader(program, fragment_shader);
+        glLinkProgram(program);
+
+        GLint success;
+        glGetProgramiv(program, GL_LINK_STATUS, &success);
+        if (!success) {
+            char info_log[512];
+            glGetProgramInfoLog(program, 512, NULL, info_log);
+            printf("Shader program linking failed: %s\n", info_log);
+            return 0;
+        }
+
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
+
+        return program;
+    }
+
+    GLuint CompileShader(GLenum type, const char* source) {
+        GLuint shader = glCreateShader(type);
+        glShaderSource(shader, 1, &source, NULL);
+        glCompileShader(shader);
+
+        GLint success;
+        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            char info_log[512];
+            glGetShaderInfoLog(shader, 512, NULL, info_log);
+            printf("Shader compilation failed: %s\n", info_log);
+            return 0;
+        }
+
+        return shader;
+    }
+};
+
+} // namespace SemiconductorHMI
+```
+
+---
+
+## 실습 3: 고급 ImGui 위젯 및 커스텀 렌더링
+
+### 실습 목표
+- 커스텀 ImGui 위젯 개발
+- 2D/3D 혼합 인터페이스 구현
+- 고급 시각화 컴포넌트 (히트맵, 3D 그래프)
+- 인터랙티브 3D 씬 편집기
+
+### 커스텀 3D 위젯 구현
+
+#### 1. 3D 뷰포트 위젯
+```cpp
+// Custom3DWidget.h
+#pragma once
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <memory>
+#include <vector>
+#include <functional>
+
+namespace SemiconductorHMI {
+
+class Custom3DViewport {
+private:
+    std::unique_ptr<Advanced3DCamera> camera;
+    std::unique_ptr<PBRShader> pbr_shader;
+    std::vector<std::unique_ptr<Model>> models;
+
+    GLuint framebuffer;
+    GLuint color_texture;
+    GLuint depth_texture;
+
+    ImVec2 viewport_size;
+    bool is_initialized;
+    bool is_focused;
+
+    // 인터랙션 상태
+    bool is_dragging_gizmo;
+    int selected_object;
+    glm::vec3 gizmo_position;
+
+    // 렌더링 설정
+    bool enable_wireframe;
+    bool enable_grid;
+    bool enable_shadows;
+    float grid_size;
+    glm::vec3 background_color;
+
+    // 조명 설정
+    std::vector<glm::vec3> light_positions;
+    std::vector<glm::vec3> light_colors;
+
+public:
+    Custom3DViewport(float width = 800.0f, float height = 600.0f)
+        : viewport_size(width, height), is_initialized(false), is_focused(false)
+        , is_dragging_gizmo(false), selected_object(-1), gizmo_position(0.0f)
+        , enable_wireframe(false), enable_grid(true), enable_shadows(true)
+        , grid_size(10.0f), background_color(0.2f, 0.2f, 0.2f) {
+
+        camera = std::make_unique<Advanced3DCamera>(width, height);
+        pbr_shader = std::make_unique<PBRShader>();
+
+        // 기본 조명 설정
+        light_positions = {
+            glm::vec3(10.0f, 10.0f, 10.0f),
+            glm::vec3(-10.0f, 10.0f, 10.0f),
+            glm::vec3(0.0f, -10.0f, 5.0f)
+        };
+
+        light_colors = {
+            glm::vec3(300.0f, 300.0f, 300.0f),
+            glm::vec3(200.0f, 200.0f, 250.0f),
+            glm::vec3(100.0f, 100.0f, 100.0f)
+        };
+    }
+
+    bool Initialize() {
+        if (!pbr_shader->Initialize()) {
+            return false;
+        }
+
+        CreateFramebuffer();
+        is_initialized = true;
+        return true;
+    }
+
+    void Render(const char* window_name = "3D Viewport") {
+        if (!is_initialized) return;
+
+        ImGui::Begin(window_name, nullptr, ImGuiWindowFlags_MenuBar);
+
+        // 메뉴바 렌더링
+        RenderMenuBar();
+
+        // 뷰포트 크기 체크 및 업데이트
+        ImVec2 content_region = ImGui::GetContentRegionAvail();
+        if (content_region.x != viewport_size.x || content_region.y != viewport_size.y) {
+            ResizeViewport(content_region.x, content_region.y);
+        }
+
+        // 포커스 상태 업데이트
+        is_focused = ImGui::IsWindowFocused();
+
+        // 3D 씬 렌더링
+        Render3DScene();
+
+        // 텍스처를 ImGui 이미지로 표시
+        ImGui::Image((void*)(intptr_t)color_texture, viewport_size, ImVec2(0, 1), ImVec2(1, 0));
+
+        // 뷰포트 위의 오버레이 UI
+        RenderOverlayUI();
+
+        // 입력 처리
+        HandleInput();
+
+        ImGui::End();
+
+        // 사이드 패널들
+        RenderControlPanels();
+    }
+
+private:
+    void CreateFramebuffer() {
+        // 프레임버퍼 생성
+        glGenFramebuffers(1, &framebuffer);
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
+        // 컬러 텍스처 생성
+        glGenTextures(1, &color_texture);
+        glBindTexture(GL_TEXTURE_2D, color_texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (int)viewport_size.x, (int)viewport_size.y,
+                     0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color_texture, 0);
+
+        // 깊이 텍스처 생성
+        glGenTextures(1, &depth_texture);
+        glBindTexture(GL_TEXTURE_2D, depth_texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, (int)viewport_size.x, (int)viewport_size.y,
+                     0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth_texture, 0);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            printf("Framebuffer not complete!\n");
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    void ResizeViewport(float width, float height) {
+        viewport_size = ImVec2(width, height);
+        camera->SetAspectRatio(width / height);
+
+        // 텍스처 크기 조정
+        glBindTexture(GL_TEXTURE_2D, color_texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (int)width, (int)height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+        glBindTexture(GL_TEXTURE_2D, depth_texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, (int)width, (int)height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    }
+
+    void Render3DScene() {
+        // 프레임버퍼 바인딩
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        glViewport(0, 0, (int)viewport_size.x, (int)viewport_size.y);
+
+        // 클리어
+        glClearColor(background_color.r, background_color.g, background_color.b, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // 깊이 테스트 활성화
+        glEnable(GL_DEPTH_TEST);
+
+        // 카메라 업데이트
+        camera->Update(ImGui::GetIO().DeltaTime);
+
+        // 셰이더 사용
+        pbr_shader->Use();
+        pbr_shader->SetCamera(camera->GetPosition());
+        pbr_shader->SetLights(light_positions, light_colors);
+
+        // 그리드 렌더링
+        if (enable_grid) {
+            RenderGrid();
+        }
+
+        // 모델들 렌더링
+        for (size_t i = 0; i < models.size(); ++i) {
+            glm::mat4 model_matrix = models[i]->GetTransform();
+
+            // 선택된 객체 하이라이트
+            if ((int)i == selected_object) {
+                // 아웃라인 효과를 위한 스텐실 렌더링 등
+            }
+
+            pbr_shader->SetMatrices(model_matrix, camera->GetViewMatrix(), camera->GetProjectionMatrix());
+
+            // 와이어프레임 모드
+            if (enable_wireframe) {
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            }
+
+            models[i]->Draw(pbr_shader->GetProgramID());
+
+            if (enable_wireframe) {
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            }
+        }
+
+        // 기즈모 렌더링
+        if (selected_object >= 0) {
+            RenderGizmo();
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    void RenderGrid() {
+        // 간단한 그리드 렌더링 구현
+        // 실제로는 별도의 그리드 셰이더와 지오메트리 필요
+    }
+
+    void RenderGizmo() {
+        // 3D 변환 기즈모 렌더링
+        // 이동, 회전, 스케일 핸들 표시
+    }
+
+    void RenderMenuBar() {
+        if (ImGui::BeginMenuBar()) {
+            if (ImGui::BeginMenu("뷰")) {
+                ImGui::MenuItem("와이어프레임", nullptr, &enable_wireframe);
+                ImGui::MenuItem("그리드", nullptr, &enable_grid);
+                ImGui::MenuItem("그림자", nullptr, &enable_shadows);
+                ImGui::Separator();
+
+                if (ImGui::BeginMenu("카메라 프리셋")) {
+                    if (ImGui::MenuItem("정면")) camera->SetPresetView("Front");
+                    if (ImGui::MenuItem("상단")) camera->SetPresetView("Top");
+                    if (ImGui::MenuItem("측면")) camera->SetPresetView("Side");
+                    if (ImGui::MenuItem("등각투상")) camera->SetPresetView("Isometric");
+                    ImGui::EndMenu();
+                }
+
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("객체")) {
+                if (ImGui::MenuItem("큐브 추가")) {
+                    AddCube();
+                }
+                if (ImGui::MenuItem("구체 추가")) {
+                    AddSphere();
+                }
+                if (ImGui::MenuItem("실린더 추가")) {
+                    AddCylinder();
+                }
+                ImGui::Separator();
+                if (ImGui::MenuItem("선택된 객체 삭제") && selected_object >= 0) {
+                    DeleteSelectedObject();
+                }
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndMenuBar();
+        }
+    }
+
+    void RenderOverlayUI() {
+        // 뷰포트 위에 표시되는 오버레이 UI
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        ImVec2 canvas_pos = ImGui::GetCursorScreenPos() - ImVec2(0, viewport_size.y);
+
+        // 좌표계 표시
+        RenderCoordinateSystem(draw_list, canvas_pos);
+
+        // 정보 패널
+        RenderInfoPanel(draw_list, canvas_pos);
+    }
+
+    void RenderCoordinateSystem(ImDrawList* draw_list, ImVec2 canvas_pos) {
+        ImVec2 origin = ImVec2(canvas_pos.x + 50, canvas_pos.y + viewport_size.y - 50);
+        float axis_length = 30.0f;
+
+        // X축 (빨강)
+        draw_list->AddLine(origin,
+                          ImVec2(origin.x + axis_length, origin.y),
+                          IM_COL32(255, 0, 0, 255), 2.0f);
+        draw_list->AddText(ImVec2(origin.x + axis_length + 5, origin.y - 8),
+                          IM_COL32(255, 0, 0, 255), "X");
+
+        // Y축 (초록)
+        draw_list->AddLine(origin,
+                          ImVec2(origin.x, origin.y - axis_length),
+                          IM_COL32(0, 255, 0, 255), 2.0f);
+        draw_list->AddText(ImVec2(origin.x - 8, origin.y - axis_length - 15),
+                          IM_COL32(0, 255, 0, 255), "Y");
+
+        // Z축 (파랑) - 2D에서는 대각선으로 표현
+        draw_list->AddLine(origin,
+                          ImVec2(origin.x - axis_length * 0.7f, origin.y + axis_length * 0.7f),
+                          IM_COL32(0, 0, 255, 255), 2.0f);
+        draw_list->AddText(ImVec2(origin.x - axis_length * 0.7f - 15, origin.y + axis_length * 0.7f),
+                          IM_COL32(0, 0, 255, 255), "Z");
+    }
+
+    void RenderInfoPanel(ImDrawList* draw_list, ImVec2 canvas_pos) {
+        ImVec2 panel_pos = ImVec2(canvas_pos.x + 10, canvas_pos.y + 10);
+        ImVec2 panel_size = ImVec2(200, 80);
+
+        // 반투명 배경
+        draw_list->AddRectFilled(panel_pos,
+                                ImVec2(panel_pos.x + panel_size.x, panel_pos.y + panel_size.y),
+                                IM_COL32(0, 0, 0, 128), 5.0f);
+
+        // 정보 텍스트
+        glm::vec3 cam_pos = camera->GetPosition();
+        char info_text[256];
+        snprintf(info_text, sizeof(info_text),
+                "카메라: (%.1f, %.1f, %.1f)\n"
+                "객체 수: %zu\n"
+                "선택됨: %s",
+                cam_pos.x, cam_pos.y, cam_pos.z,
+                models.size(),
+                selected_object >= 0 ? "예" : "없음");
+
+        draw_list->AddText(ImVec2(panel_pos.x + 10, panel_pos.y + 10),
+                          IM_COL32(255, 255, 255, 255), info_text);
+    }
+
+    void RenderControlPanels() {
+        // 객체 속성 패널
+        if (ImGui::Begin("객체 속성")) {
+            if (selected_object >= 0 && selected_object < (int)models.size()) {
+                RenderObjectProperties();
+            } else {
+                ImGui::Text("선택된 객체가 없습니다.");
+            }
+        }
+        ImGui::End();
+
+        // 조명 설정 패널
+        if (ImGui::Begin("조명 설정")) {
+            RenderLightingControls();
+        }
+        ImGui::End();
+
+        // 렌더링 설정 패널
+        if (ImGui::Begin("렌더링 설정")) {
+            RenderRenderingControls();
+        }
+        ImGui::End();
+    }
+
+    void RenderObjectProperties() {
+        if (selected_object < 0 || selected_object >= (int)models.size()) return;
+
+        auto& model = models[selected_object];
+        glm::mat4 transform = model->GetTransform();
+
+        // 변환 행렬에서 위치, 회전, 스케일 추출 (간단화)
+        glm::vec3 position = glm::vec3(transform[3]);
+
+        ImGui::Text("객체 #%d", selected_object);
+        ImGui::Separator();
+
+        // 위치 조정
+        float pos[3] = { position.x, position.y, position.z };
+        if (ImGui::DragFloat3("위치", pos, 0.1f)) {
+            // 새로운 변환 매트릭스 생성 (간단화)
+            glm::mat4 new_transform = transform;
+            new_transform[3] = glm::vec4(pos[0], pos[1], pos[2], 1.0f);
+            model->SetTransform(new_transform);
+            gizmo_position = glm::vec3(pos[0], pos[1], pos[2]);
+        }
+
+        // 회전 조정 (오일러 각도)
+        static float rotation[3] = { 0.0f, 0.0f, 0.0f };
+        if (ImGui::DragFloat3("회전", rotation, 1.0f)) {
+            // 회전 적용 로직
+        }
+
+        // 스케일 조정
+        static float scale[3] = { 1.0f, 1.0f, 1.0f };
+        if (ImGui::DragFloat3("스케일", scale, 0.01f, 0.1f, 10.0f)) {
+            // 스케일 적용 로직
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::Button("객체 삭제")) {
+            DeleteSelectedObject();
+        }
+    }
+
+    void RenderLightingControls() {
+        ImGui::Text("조명 설정");
+        ImGui::Separator();
+
+        for (size_t i = 0; i < light_positions.size(); ++i) {
+            ImGui::PushID((int)i);
+
+            char label[32];
+            snprintf(label, sizeof(label), "조명 #%zu", i + 1);
+            if (ImGui::CollapsingHeader(label)) {
+
+                float pos[3] = { light_positions[i].x, light_positions[i].y, light_positions[i].z };
+                if (ImGui::DragFloat3("위치", pos, 0.5f)) {
+                    light_positions[i] = glm::vec3(pos[0], pos[1], pos[2]);
+                }
+
+                float color[3] = { light_colors[i].r / 300.0f, light_colors[i].g / 300.0f, light_colors[i].b / 300.0f };
+                if (ImGui::ColorEdit3("색상", color)) {
+                    light_colors[i] = glm::vec3(color[0], color[1], color[2]) * 300.0f;
+                }
+
+                float intensity = glm::length(light_colors[i]) / 300.0f;
+                if (ImGui::SliderFloat("강도", &intensity, 0.0f, 5.0f)) {
+                    glm::vec3 normalized = glm::normalize(light_colors[i]);
+                    light_colors[i] = normalized * intensity * 300.0f;
+                }
+            }
+
+            ImGui::PopID();
+        }
+
+        if (ImGui::Button("조명 추가") && light_positions.size() < 4) {
+            light_positions.push_back(glm::vec3(0.0f, 10.0f, 0.0f));
+            light_colors.push_back(glm::vec3(300.0f, 300.0f, 300.0f));
+        }
+    }
+
+    void RenderRenderingControls() {
+        ImGui::Text("렌더링 설정");
+        ImGui::Separator();
+
+        ImGui::Checkbox("와이어프레임", &enable_wireframe);
+        ImGui::Checkbox("그리드 표시", &enable_grid);
+        ImGui::Checkbox("그림자", &enable_shadows);
+
+        ImGui::SliderFloat("그리드 크기", &grid_size, 1.0f, 50.0f);
+
+        float bg_color[3] = { background_color.r, background_color.g, background_color.b };
+        if (ImGui::ColorEdit3("배경색", bg_color)) {
+            background_color = glm::vec3(bg_color[0], bg_color[1], bg_color[2]);
+        }
+
+        ImGui::Separator();
+
+        // 카메라 설정
+        ImGui::Text("카메라 설정");
+
+        float fov = camera->GetFOV();
+        if (ImGui::SliderFloat("시야각", &fov, 10.0f, 120.0f)) {
+            // FOV 설정 로직
+        }
+
+        // 카메라 모드 선택
+        const char* camera_modes[] = { "자유 회전", "궤도", "1인칭", "상단" };
+        int current_mode = (int)camera->GetMode();
+        if (ImGui::Combo("카메라 모드", &current_mode, camera_modes, 4)) {
+            camera->SetMode((CameraMode)current_mode);
+        }
+    }
+
+    void HandleInput() {
+        if (!is_focused) return;
+
+        ImGuiIO& io = ImGui::GetIO();
+
+        // 객체 선택 (마우스 클릭)
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !io.KeyCtrl) {
+            // 레이캐스팅을 통한 객체 선택
+            // 간단화: 마우스 위치 기반 선택
+            HandleObjectSelection();
+        }
+
+        // 삭제 키
+        if (ImGui::IsKeyPressed(ImGuiKey_Delete) && selected_object >= 0) {
+            DeleteSelectedObject();
+        }
+
+        // 복사 (Ctrl+D)
+        if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D) && selected_object >= 0) {
+            DuplicateSelectedObject();
+        }
+    }
+
+    void HandleObjectSelection() {
+        // 실제로는 레이캐스팅 구현 필요
+        // 여기서는 간단한 예제
+        ImVec2 mouse_pos = ImGui::GetMousePos();
+        ImVec2 window_pos = ImGui::GetWindowPos();
+        ImVec2 content_pos = ImGui::GetWindowContentRegionMin();
+
+        // 뷰포트 내 상대 좌표 계산
+        ImVec2 relative_pos = ImVec2(
+            mouse_pos.x - window_pos.x - content_pos.x,
+            mouse_pos.y - window_pos.y - content_pos.y
+        );
+
+        // 간단한 선택 로직 (실제로는 3D 레이캐스팅 필요)
+        selected_object = (selected_object + 1) % (int)models.size();
+        if (models.empty()) selected_object = -1;
+    }
+
+    void AddCube() {
+        auto cube = Model::CreateCube(1.0f);
+        glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0));
+        cube->SetTransform(transform);
+        models.push_back(std::move(cube));
+        selected_object = (int)models.size() - 1;
+    }
+
+    void AddSphere() {
+        auto sphere = Model::CreateSphere(1.0f, 32);
+        glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(2, 0, 0));
+        sphere->SetTransform(transform);
+        models.push_back(std::move(sphere));
+        selected_object = (int)models.size() - 1;
+    }
+
+    void AddCylinder() {
+        auto cylinder = Model::CreateCylinder(1.0f, 2.0f, 32);
+        glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(-2, 0, 0));
+        cylinder->SetTransform(transform);
+        models.push_back(std::move(cylinder));
+        selected_object = (int)models.size() - 1;
+    }
+
+    void DeleteSelectedObject() {
+        if (selected_object >= 0 && selected_object < (int)models.size()) {
+            models.erase(models.begin() + selected_object);
+            selected_object = -1;
+        }
+    }
+
+    void DuplicateSelectedObject() {
+        if (selected_object >= 0 && selected_object < (int)models.size()) {
+            // 간단한 복제 (실제로는 깊은 복사 필요)
+            // 여기서는 새로운 기본 객체 추가로 대체
+            AddCube();
+        }
+    }
+};
+
+} // namespace SemiconductorHMI
+```
+
+---
+
+## ❓ 질의응답
+
+<div style="margin: 2rem 0;">
+
+<div style="background: #f8f9fa; padding: 2rem; border-radius: 8px; text-align: center; border: 2px dashed #6c757d;">
+    <h3 style="color: #495057; margin: 0 0 1rem 0;">💬 질문해 주세요!</h3>
+    <p style="margin: 0; color: #6c757d; font-style: italic;">
+        ImGui의 고급 3D 렌더링, PBR 셰이더, 커스텀 위젯 개발에 대해<br>
+        궁금한 점이 있으시면 언제든지 질문해 주세요.
+    </p>
+</div>
+
+</div>
+
+---
