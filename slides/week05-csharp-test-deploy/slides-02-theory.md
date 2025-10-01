@@ -1,4 +1,913 @@
-# 🔧 이론 강의: 테스트 전략 및 CI/CD (45분)
+# 🔧 이론 강의: 테스트 전략 및 CI/CD
+
+---
+
+## 소프트웨어 테스팅 원칙
+
+### 📊 Test Pyramid (테스트 피라미드)
+
+**테스트 전략의 기본 원칙**
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```
+      /\
+     /  \  E2E Tests
+    /____\  (UI Tests)
+   /      \
+  / Integration \
+ /    Tests      \
+/___________________\
+/                   \
+/   Unit Tests      \
+/_____________________\
+```
+
+**각 계층의 특징**:
+
+```csharp
+// Unit Test (70-80%)
+[TestMethod]
+public void CalculateDiscount_WithValidInput_ReturnsCorrectValue()
+{
+    // Arrange
+    var calculator = new PriceCalculator();
+
+    // Act
+    var result = calculator.CalculateDiscount(100, 0.1);
+
+    // Assert
+    Assert.AreEqual(10.0, result);
+}
+
+// Integration Test (15-20%)
+[TestMethod]
+public async Task SaveEquipmentData_WithDatabase_PersistsCorrectly()
+{
+    // Arrange
+    var repository = new EquipmentRepository(_dbContext);
+    var equipment = new Equipment { Id = "E001", Name = "Etcher" };
+
+    // Act
+    await repository.SaveAsync(equipment);
+
+    // Assert
+    var saved = await repository.GetByIdAsync("E001");
+    Assert.IsNotNull(saved);
+    Assert.AreEqual("Etcher", saved.Name);
+}
+
+// E2E Test (5-10%)
+[TestMethod]
+public async Task UserCanStartEquipment_ThroughUI()
+{
+    // Selenium WebDriver로 UI 테스트
+    await _driver.Navigate().GoToUrl("/equipment");
+    await _driver.FindElement(By.Id("startButton")).Click();
+
+    var status = await _driver.FindElement(By.Id("status")).Text;
+    Assert.AreEqual("Running", status);
+}
+```
+
+</div>
+<div>
+
+**Test Pyramid 원칙**:
+
+**Unit Tests (기반)**:
+- 가장 많은 수 (70-80%)
+- 빠른 실행 (밀리초 단위)
+- 격리된 테스트
+- 낮은 유지보수 비용
+- 높은 안정성
+
+**Integration Tests (중간)**:
+- 중간 규모 (15-20%)
+- 여러 컴포넌트 통합
+- DB, 파일, 네트워크 등 실제 리소스 사용
+- 적당한 실행 시간 (초 단위)
+- 중간 유지보수 비용
+
+**E2E Tests (정점)**:
+- 소수 (5-10%)
+- 전체 시스템 검증
+- 사용자 시나리오 테스트
+- 느린 실행 (분 단위)
+- 높은 유지보수 비용
+- 불안정할 수 있음 (flaky tests)
+
+**Anti-Pattern (Ice Cream Cone)**:
+```
+  __________
+ /          \
+|  Unit Tests |  ← 소수
+|____________|
+ \          /
+  \ E2E    /    ← 다수 (문제!)
+   \______/
+```
+- E2E에 의존하면 느리고 불안정
+- 단위 테스트 부족으로 디버깅 어려움
+
+**반도체 HMI에서의 적용**:
+- Unit: 비즈니스 로직, 계산, 변환
+- Integration: DB 저장, 센서 통신
+- E2E: 전체 워크플로우 (장비 시작→데이터 수집→알람)
+
+</div>
+</div>
+
+---
+
+### 🔄 Test-Driven Development (TDD)
+
+**Red-Green-Refactor 사이클**
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+**TDD 워크플로우**:
+
+```
+1. RED    →  2. GREEN  →  3. REFACTOR
+(실패하는    (테스트를      (코드 개선)
+ 테스트 작성)  통과시킴)         ↓
+    ↑                           |
+    ←←←←←←←←←←←←←←←←←←←←←←←←←←←←
+```
+
+**Step 1: RED - 실패하는 테스트 작성**
+
+```csharp
+[TestClass]
+public class TemperatureConverterTests
+{
+    [TestMethod]
+    public void CelsiusToFahrenheit_WithZero_Returns32()
+    {
+        // Arrange
+        var converter = new TemperatureConverter();
+
+        // Act
+        var result = converter.CelsiusToFahrenheit(0);
+
+        // Assert
+        Assert.AreEqual(32.0, result);
+    }
+
+    [TestMethod]
+    public void CelsiusToFahrenheit_With100_Returns212()
+    {
+        var converter = new TemperatureConverter();
+        var result = converter.CelsiusToFahrenheit(100);
+        Assert.AreEqual(212.0, result);
+    }
+}
+
+// 이 시점에서 TemperatureConverter 클래스가 없으므로
+// 컴파일 에러 또는 테스트 실패
+```
+
+**Step 2: GREEN - 최소한의 코드로 통과**
+
+```csharp
+public class TemperatureConverter
+{
+    public double CelsiusToFahrenheit(double celsius)
+    {
+        // 가장 간단한 구현으로 테스트 통과
+        return celsius * 9.0 / 5.0 + 32.0;
+    }
+}
+
+// 테스트 통과! ✅
+```
+
+</div>
+<div>
+
+**TDD의 핵심 원칙**:
+
+**1. 실패하는 테스트 먼저**:
+- 구현 전에 테스트 작성
+- 요구사항을 테스트 코드로 명세
+- 컴파일 에러도 "실패"로 간주
+
+**2. 최소한의 코드**:
+- 테스트를 통과시키는 최소 코드
+- Over-engineering 방지
+- YAGNI (You Aren't Gonna Need It)
+
+**3. Refactor (리팩터링)**:
+- 테스트가 통과한 후 개선
+- 중복 제거, 명확성 향상
+- 테스트가 안전망 역할
+
+**Step 3: REFACTOR - 코드 개선**
+
+```csharp
+public class TemperatureConverter
+{
+    private const double CelsiusToFahrenheitFactor = 9.0 / 5.0;
+    private const double FahrenheitOffset = 32.0;
+
+    public double CelsiusToFahrenheit(double celsius)
+    {
+        if (double.IsNaN(celsius) || double.IsInfinity(celsius))
+        {
+            throw new ArgumentException(
+                "Invalid temperature value", nameof(celsius));
+        }
+
+        return celsius * CelsiusToFahrenheitFactor
+            + FahrenheitOffset;
+    }
+
+    public double FahrenheitToCelsius(double fahrenheit)
+    {
+        if (double.IsNaN(fahrenheit) || double.IsInfinity(fahrenheit))
+        {
+            throw new ArgumentException(
+                "Invalid temperature value", nameof(fahrenheit));
+        }
+
+        return (fahrenheit - FahrenheitOffset)
+            / CelsiusToFahrenheitFactor;
+    }
+}
+
+// 테스트 여전히 통과! ✅
+// 더 명확하고 확장 가능한 코드
+```
+
+**TDD의 장점**:
+- 설계 개선 (테스트 가능한 코드 = 좋은 설계)
+- 높은 코드 커버리지 (자동)
+- 리그레션 방지
+- 문서화 (테스트가 사용 예시)
+- 자신감 있는 리팩터링
+
+**반도체 HMI에서의 TDD**:
+```csharp
+// 1. RED: 알람 로직 테스트 작성
+[TestMethod]
+public void CheckTemperature_AboveThreshold_TriggersAlarm()
+{
+    var alarmSystem = new AlarmSystem();
+    var triggered = alarmSystem.CheckTemperature(250.0, 200.0);
+    Assert.IsTrue(triggered);
+}
+
+// 2. GREEN: 최소 구현
+public bool CheckTemperature(double current, double threshold)
+{
+    return current > threshold;
+}
+
+// 3. REFACTOR: 히스테리시스 추가
+public bool CheckTemperature(double current, double threshold)
+{
+    const double Hysteresis = 5.0;
+    if (current > threshold)
+    {
+        _alarmTriggered = true;
+    }
+    else if (current < threshold - Hysteresis)
+    {
+        _alarmTriggered = false;
+    }
+    return _alarmTriggered;
+}
+```
+
+</div>
+</div>
+
+---
+
+### 🎭 Behavior-Driven Development (BDD)
+
+**Given-When-Then 패턴**
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+**BDD 핵심 개념**:
+- 비즈니스 가치 중심 테스트
+- 자연어로 시나리오 작성
+- 개발자-QA-비즈니스 팀 협업
+
+**SpecFlow를 활용한 BDD**:
+
+```gherkin
+# EquipmentControl.feature
+Feature: Equipment Control
+  As a fab operator
+  I want to control equipment through HMI
+  So that I can manage production processes
+
+Scenario: Starting idle equipment
+  Given the equipment is in "Idle" state
+  And the equipment has no alarms
+  When the operator presses the "Start" button
+  Then the equipment state should be "Running"
+  And the start time should be recorded
+  And a notification should be sent to supervisors
+
+Scenario: Cannot start equipment with active alarm
+  Given the equipment is in "Idle" state
+  And the equipment has a "High Temperature" alarm
+  When the operator presses the "Start" button
+  Then the equipment state should remain "Idle"
+  And an error message "Cannot start with active alarms" should be displayed
+  And no notification should be sent
+
+Scenario: Emergency stop during operation
+  Given the equipment is in "Running" state
+  And the process has been running for "5" minutes
+  When the operator presses the "Emergency Stop" button
+  Then the equipment state should be "Emergency Stopped"
+  And all recipes should be aborted
+  And an emergency alert should be sent immediately
+  And the equipment should be locked for "30" minutes
+```
+
+</div>
+<div>
+
+**Step Definitions (C# 구현)**:
+
+```csharp
+[Binding]
+public class EquipmentControlSteps
+{
+    private Equipment _equipment;
+    private EquipmentController _controller;
+    private string _lastErrorMessage;
+    private bool _notificationSent;
+
+    [Given(@"the equipment is in ""(.*)"" state")]
+    public void GivenTheEquipmentIsInState(string state)
+    {
+        _equipment = new Equipment
+        {
+            Id = "TEST001",
+            State = Enum.Parse<EquipmentState>(state)
+        };
+        _controller = new EquipmentController(_equipment);
+    }
+
+    [Given(@"the equipment has no alarms")]
+    public void GivenTheEquipmentHasNoAlarms()
+    {
+        _equipment.Alarms.Clear();
+    }
+
+    [Given(@"the equipment has a ""(.*)"" alarm")]
+    public void GivenTheEquipmentHasAlarm(string alarmType)
+    {
+        _equipment.Alarms.Add(new Alarm
+        {
+            Type = Enum.Parse<AlarmType>(alarmType.Replace(" ", "")),
+            Timestamp = DateTime.UtcNow
+        });
+    }
+
+    [When(@"the operator presses the ""(.*)"" button")]
+    public async Task WhenTheOperatorPressesButton(string buttonName)
+    {
+        try
+        {
+            switch (buttonName)
+            {
+                case "Start":
+                    await _controller.StartAsync();
+                    break;
+                case "Emergency Stop":
+                    await _controller.EmergencyStopAsync();
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _lastErrorMessage = ex.Message;
+        }
+    }
+
+    [Then(@"the equipment state should be ""(.*)""")]
+    public void ThenTheEquipmentStateShouldBe(string expectedState)
+    {
+        var expected = Enum.Parse<EquipmentState>(expectedState);
+        Assert.AreEqual(expected, _equipment.State);
+    }
+
+    [Then(@"the equipment state should remain ""(.*)""")]
+    public void ThenTheEquipmentStateShouldRemain(string expectedState)
+    {
+        ThenTheEquipmentStateShouldBe(expectedState);
+    }
+
+    [Then(@"an error message ""(.*)"" should be displayed")]
+    public void ThenAnErrorMessageShouldBeDisplayed(string expectedMessage)
+    {
+        Assert.IsNotNull(_lastErrorMessage);
+        Assert.IsTrue(_lastErrorMessage.Contains(expectedMessage));
+    }
+
+    [Then(@"the start time should be recorded")]
+    public void ThenTheStartTimeShouldBeRecorded()
+    {
+        Assert.IsNotNull(_equipment.LastStartTime);
+        Assert.IsTrue(
+            DateTime.UtcNow - _equipment.LastStartTime < TimeSpan.FromSeconds(5));
+    }
+}
+```
+
+**BDD의 장점**:
+- 비즈니스 요구사항을 직접 테스트
+- 실행 가능한 명세 (Living Documentation)
+- 팀 간 의사소통 도구
+- 인수 테스트 자동화
+
+**테스트 리포트 예시**:
+```
+Feature: Equipment Control
+  ✅ Starting idle equipment (2.3s)
+  ✅ Cannot start equipment with active alarm (1.1s)
+  ✅ Emergency stop during operation (3.5s)
+
+3 scenarios (3 passed)
+12 steps (12 passed)
+Total: 6.9s
+```
+
+</div>
+</div>
+
+---
+
+### 🎯 Test Doubles (테스트 대역)
+
+**Mock, Stub, Fake, Spy 비교**
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+**1. Dummy (더미)**:
+```csharp
+// 전달만 되고 실제로 사용되지 않음
+public class DummyLogger : ILogger
+{
+    public void Log(string message) { }
+    public void LogError(Exception ex) { }
+}
+
+// 사용
+var service = new EquipmentService(
+    repository,
+    new DummyLogger()); // 로거가 필요하지만 테스트에서 미사용
+```
+
+**2. Stub (스텁)**:
+```csharp
+// 미리 정의된 응답 반환
+public class StubTemperatureSensor : ITemperatureSensor
+{
+    private readonly Queue<double> _temperatures;
+
+    public StubTemperatureSensor(params double[] temps)
+    {
+        _temperatures = new Queue<double>(temps);
+    }
+
+    public Task<double> ReadTemperatureAsync()
+    {
+        if (_temperatures.Count > 0)
+        {
+            return Task.FromResult(_temperatures.Dequeue());
+        }
+        return Task.FromResult(25.0); // 기본값
+    }
+}
+
+// 테스트
+[TestMethod]
+public async Task ProcessData_WithSpecificTemperatures_CalculatesAverage()
+{
+    // Arrange: 예측 가능한 온도 시퀀스
+    var sensor = new StubTemperatureSensor(20.0, 25.0, 30.0);
+    var processor = new DataProcessor(sensor);
+
+    // Act
+    var average = await processor.CalculateAverageTemperature(3);
+
+    // Assert
+    Assert.AreEqual(25.0, average);
+}
+```
+
+**3. Fake (가짜)**:
+```csharp
+// 실제 동작하는 간단한 구현
+public class FakeEquipmentRepository : IEquipmentRepository
+{
+    private readonly Dictionary<string, Equipment> _storage
+        = new Dictionary<string, Equipment>();
+
+    public Task<Equipment> GetByIdAsync(string id)
+    {
+        _storage.TryGetValue(id, out var equipment);
+        return Task.FromResult(equipment);
+    }
+
+    public Task SaveAsync(Equipment equipment)
+    {
+        _storage[equipment.Id] = equipment;
+        return Task.CompletedTask;
+    }
+
+    public Task<List<Equipment>> GetAllAsync()
+    {
+        return Task.FromResult(_storage.Values.ToList());
+    }
+
+    public Task DeleteAsync(string id)
+    {
+        _storage.Remove(id);
+        return Task.CompletedTask;
+    }
+}
+
+// 실제 DB 없이 동작하지만, 메모리에서 CRUD 동작 구현
+```
+
+</div>
+<div>
+
+**4. Mock (목)**:
+```csharp
+// 호출 검증 + 행동 정의
+[TestMethod]
+public async Task StartEquipment_WhenSuccessful_SendsNotification()
+{
+    // Arrange
+    var mockNotificationService = new Mock<INotificationService>();
+    var controller = new EquipmentController(
+        _equipment,
+        mockNotificationService.Object);
+
+    // Act
+    await controller.StartAsync();
+
+    // Assert: 정확히 1번 호출되었는지 검증
+    mockNotificationService.Verify(
+        x => x.SendAsync(
+            It.Is<Notification>(n =>
+                n.Type == NotificationType.EquipmentStarted &&
+                n.EquipmentId == "E001")),
+        Times.Once);
+}
+
+[TestMethod]
+public async Task ProcessAlarm_WithCriticalAlarm_CallsEmergencyProtocol()
+{
+    // Arrange
+    var mockEmergencySystem = new Mock<IEmergencySystem>();
+    mockEmergencySystem
+        .Setup(x => x.TriggerProtocolAsync(It.IsAny<Alarm>()))
+        .ReturnsAsync(true);
+
+    var alarmHandler = new AlarmHandler(mockEmergencySystem.Object);
+    var criticalAlarm = new Alarm
+    {
+        Severity = AlarmSeverity.Critical,
+        Type = AlarmType.SafetyInterlock
+    };
+
+    // Act
+    await alarmHandler.HandleAsync(criticalAlarm);
+
+    // Assert
+    mockEmergencySystem.Verify(
+        x => x.TriggerProtocolAsync(criticalAlarm),
+        Times.Once);
+    mockEmergencySystem.Verify(
+        x => x.NotifyOpsTeamAsync(It.IsAny<string>()),
+        Times.Once);
+}
+```
+
+**5. Spy (스파이)**:
+```csharp
+// 호출 기록 + 실제 동작
+public class SpyLogger : ILogger
+{
+    private readonly List<LogEntry> _logEntries
+        = new List<LogEntry>();
+
+    public IReadOnlyList<LogEntry> LogEntries => _logEntries;
+
+    public void Log(string message)
+    {
+        var entry = new LogEntry
+        {
+            Level = LogLevel.Info,
+            Message = message,
+            Timestamp = DateTime.UtcNow
+        };
+        _logEntries.Add(entry);
+
+        // 실제 로깅도 수행
+        Console.WriteLine($"[{entry.Timestamp}] {message}");
+    }
+
+    public void LogError(Exception ex)
+    {
+        var entry = new LogEntry
+        {
+            Level = LogLevel.Error,
+            Message = ex.Message,
+            Exception = ex,
+            Timestamp = DateTime.UtcNow
+        };
+        _logEntries.Add(entry);
+        Console.Error.WriteLine($"[ERROR] {ex.Message}");
+    }
+}
+
+// 테스트
+[TestMethod]
+public async Task ProcessEquipment_LogsAllSteps()
+{
+    // Arrange
+    var spyLogger = new SpyLogger();
+    var processor = new EquipmentProcessor(spyLogger);
+
+    // Act
+    await processor.ProcessAsync(equipment);
+
+    // Assert: 로깅 검증
+    Assert.AreEqual(4, spyLogger.LogEntries.Count);
+    Assert.IsTrue(spyLogger.LogEntries[0].Message.Contains("Starting"));
+    Assert.IsTrue(spyLogger.LogEntries[3].Message.Contains("Completed"));
+}
+```
+
+**선택 가이드**:
+- **Dummy**: 필수 파라미터이지만 사용되지 않음
+- **Stub**: 간접 입력 (indirect input) 제어
+- **Fake**: 실제 동작하는 경량 구현
+- **Mock**: 간접 출력 (indirect output) 검증
+- **Spy**: 실제 동작 + 호출 기록
+
+</div>
+</div>
+
+---
+
+### 🏗️ AAA 패턴 (Arrange-Act-Assert)
+
+**테스트 구조화**
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+**AAA 패턴 구조**:
+
+```csharp
+[TestMethod]
+public async Task StartEquipment_WithValidConditions_StartsSuccessfully()
+{
+    // ============= ARRANGE =============
+    // 테스트 준비: 객체 생성, 상태 설정, 의존성 주입
+
+    var equipment = new Equipment
+    {
+        Id = "E001",
+        Name = "Etcher",
+        State = EquipmentState.Idle,
+        Temperature = 25.0
+    };
+
+    var mockRepository = new Mock<IEquipmentRepository>();
+    mockRepository
+        .Setup(r => r.GetByIdAsync("E001"))
+        .ReturnsAsync(equipment);
+
+    var mockNotificationService = new Mock<INotificationService>();
+
+    var controller = new EquipmentController(
+        mockRepository.Object,
+        mockNotificationService.Object);
+
+    // ============= ACT =============
+    // 테스트 대상 메서드 실행
+
+    var result = await controller.StartEquipmentAsync("E001");
+
+    // ============= ASSERT =============
+    // 결과 검증
+
+    Assert.IsTrue(result.IsSuccess);
+    Assert.AreEqual(EquipmentState.Running, equipment.State);
+    Assert.IsNotNull(equipment.LastStartTime);
+
+    mockNotificationService.Verify(
+        n => n.SendAsync(It.IsAny<Notification>()),
+        Times.Once);
+}
+```
+
+**복잡한 Arrange 리팩터링**:
+
+```csharp
+public class EquipmentTestBuilder
+{
+    private Equipment _equipment = new Equipment();
+    private List<Alarm> _alarms = new List<Alarm>();
+
+    public EquipmentTestBuilder WithId(string id)
+    {
+        _equipment.Id = id;
+        return this;
+    }
+
+    public EquipmentTestBuilder WithState(EquipmentState state)
+    {
+        _equipment.State = state;
+        return this;
+    }
+
+    public EquipmentTestBuilder WithTemperature(double temp)
+    {
+        _equipment.Temperature = temp;
+        return this;
+    }
+
+    public EquipmentTestBuilder WithAlarm(AlarmType type, AlarmSeverity severity)
+    {
+        _alarms.Add(new Alarm { Type = type, Severity = severity });
+        return this;
+    }
+
+    public Equipment Build()
+    {
+        _equipment.Alarms = _alarms;
+        return _equipment;
+    }
+}
+
+// 사용: Fluent API로 깔끔한 테스트
+[TestMethod]
+public async Task Test_WithBuilder()
+{
+    // Arrange - 훨씬 읽기 쉬움
+    var equipment = new EquipmentTestBuilder()
+        .WithId("E001")
+        .WithState(EquipmentState.Idle)
+        .WithTemperature(150.0)
+        .WithAlarm(AlarmType.HighTemperature, AlarmSeverity.Warning)
+        .Build();
+
+    // Act
+    var canStart = _controller.CanStart(equipment);
+
+    // Assert
+    Assert.IsFalse(canStart);
+}
+```
+
+</div>
+<div>
+
+**AAA 패턴의 장점**:
+- 테스트 가독성 향상
+- 일관된 구조
+- 명확한 의도 전달
+
+**Common Patterns**:
+
+**1. Setup 메서드 활용**:
+```csharp
+[TestClass]
+public class EquipmentControllerTests
+{
+    private EquipmentController _controller;
+    private Mock<IEquipmentRepository> _mockRepository;
+
+    [TestInitialize]
+    public void Setup()
+    {
+        // 모든 테스트에서 공통으로 사용할 Arrange
+        _mockRepository = new Mock<IEquipmentRepository>();
+        _controller = new EquipmentController(_mockRepository.Object);
+    }
+
+    [TestMethod]
+    public async Task Test1()
+    {
+        // Arrange: 이 테스트만의 특수 설정
+        var equipment = CreateTestEquipment();
+
+        // Act
+        await _controller.StartAsync(equipment);
+
+        // Assert
+        Assert.AreEqual(EquipmentState.Running, equipment.State);
+    }
+}
+```
+
+**2. Theory 테스트 (데이터 주도)**:
+```csharp
+[TestClass]
+public class TemperatureValidationTests
+{
+    [DataTestMethod]
+    [DataRow(-50, true,  "최소 온도")]
+    [DataRow(0,   true,  "경계값 하한")]
+    [DataRow(150, true,  "정상 범위")]
+    [DataRow(300, true,  "경계값 상한")]
+    [DataRow(301, false, "최대 초과")]
+    [DataRow(double.NaN, false, "유효하지 않은 값")]
+    public void ValidateTemperature_WithVariousInputs_ReturnsExpected(
+        double temperature,
+        bool expectedValid,
+        string scenario)
+    {
+        // Arrange
+        var validator = new TemperatureValidator(-50, 300);
+
+        // Act
+        var isValid = validator.IsValid(temperature);
+
+        // Assert
+        Assert.AreEqual(expectedValid, isValid, $"Failed for: {scenario}");
+    }
+}
+```
+
+**3. Helper Methods**:
+```csharp
+[TestClass]
+public class AlarmTests
+{
+    [TestMethod]
+    public async Task HighPriorityAlarm_TriggersImmediateNotification()
+    {
+        // Arrange
+        var alarm = CreateCriticalAlarm();
+        var handler = CreateAlarmHandler();
+
+        // Act
+        await handler.HandleAsync(alarm);
+
+        // Assert
+        AssertNotificationSent();
+        AssertAlarmLogged(alarm);
+    }
+
+    private Alarm CreateCriticalAlarm()
+    {
+        return new Alarm
+        {
+            Type = AlarmType.SafetyInterlock,
+            Severity = AlarmSeverity.Critical,
+            EquipmentId = "E001",
+            Message = "Safety door opened during operation",
+            Timestamp = DateTime.UtcNow
+        };
+    }
+
+    private AlarmHandler CreateAlarmHandler()
+    {
+        var mockNotification = new Mock<INotificationService>();
+        var mockLogger = new Mock<ILogger>();
+        return new AlarmHandler(
+            mockNotification.Object,
+            mockLogger.Object);
+    }
+
+    private void AssertNotificationSent()
+    {
+        // 검증 로직
+    }
+}
+```
+
+**Anti-Patterns (피해야 할 패턴)**:
+- ❌ Multiple Act: 하나의 테스트에서 여러 동작
+- ❌ No Assert: 검증 없는 테스트
+- ❌ Conditional Logic: if/for 문 사용
+- ❌ Test Interdependence: 테스트 간 의존성
+
+</div>
+</div>
+
+---
 
 ## .NET 테스트 프레임워크 비교
 

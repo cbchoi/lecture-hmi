@@ -1,4 +1,4 @@
-# 🧪 기초 실습: Unit Test 및 Integration Test (45분)
+# 🧪 기초 실습: Unit Test 및 Integration Test
 
 ## xUnit 기반 Unit Test 구현
 

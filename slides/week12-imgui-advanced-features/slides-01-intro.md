@@ -8,11 +8,14 @@
 
 ---
 
-## 📚 이론 강의 (45분): 플러그인 아키텍처 및 확장성 설계
+## 📚 이론 강의: 플러그인 아키텍처 및 확장성 설계
 
-### 1. 플러그인 아키텍처 설계 (15분)
+### 1. 플러그인 아키텍처 설계
 
 #### 1.1 플러그인 인터페이스 정의
+
+<div class="grid grid-cols-2 gap-8">
+<div>
 
 ```cpp
 // PluginInterface.h
@@ -33,7 +36,8 @@ public:
     virtual std::string GetName() const = 0;
     virtual std::string GetVersion() const = 0;
     virtual std::string GetDescription() const = 0;
-    virtual std::vector<std::string> GetDependencies() const = 0;
+    virtual std::vector<std::string>
+        GetDependencies() const = 0;
 
     // 라이프사이클 관리
     virtual bool Initialize() = 0;
@@ -45,11 +49,53 @@ public:
     virtual void OnRender() = 0;
     virtual void OnImGuiRender() = 0;
 };
+```
 
+</div>
+<div>
+
+**IPlugin 인터페이스 설명**:
+
+**메타데이터 메서드**:
+- `GetName()`: 플러그인 고유 이름
+- `GetVersion()`: 버전 정보 (예: "1.0.0")
+- `GetDescription()`: 플러그인 설명
+- `GetDependencies()`: 의존하는 다른 플러그인 목록
+
+**라이프사이클 메서드**:
+- `Initialize()`: 플러그인 초기화
+  - 리소스 할당
+  - 설정 파일 로드
+  - 의존성 확인
+- `Shutdown()`: 플러그인 정리
+  - 리소스 해제
+  - 연결 종료
+- `IsInitialized()`: 초기화 상태 확인
+
+**ImGUI 통합 메서드**:
+- `OnUpdate(deltaTime)`: 프레임마다 호출
+  - 로직 업데이트
+  - 데이터 처리
+- `OnRender()`: 렌더링 전 호출
+- `OnImGuiRender()`: ImGUI 렌더링
+  - UI 그리기
+  - 사용자 입력 처리
+
+</div>
+</div>
+
+---
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```cpp
 // 위젯 플러그인 인터페이스
 class IWidgetPlugin : public IPlugin {
 public:
-    virtual void RenderWidget(const char* name, bool* open = nullptr) = 0;
+    virtual void RenderWidget(
+        const char* name,
+        bool* open = nullptr) = 0;
     virtual ImVec2 GetPreferredSize() const = 0;
     virtual bool IsResizable() const = 0;
 };
@@ -57,22 +103,67 @@ public:
 // 데이터 소스 플러그인 인터페이스
 class IDataSourcePlugin : public IPlugin {
 public:
-    virtual bool Connect(const std::string& connectionString) = 0;
+    virtual bool Connect(
+        const std::string& connectionString) = 0;
     virtual void Disconnect() = 0;
     virtual bool IsConnected() const = 0;
     virtual std::vector<uint8_t> ReadData() = 0;
-    virtual bool WriteData(const std::vector<uint8_t>& data) = 0;
+    virtual bool WriteData(
+        const std::vector<uint8_t>& data) = 0;
 };
 
 // 플러그인 팩토리
 class IPluginFactory {
 public:
     virtual ~IPluginFactory() = default;
-    virtual std::unique_ptr<IPlugin> CreatePlugin() = 0;
+    virtual std::unique_ptr<IPlugin>
+        CreatePlugin() = 0;
     virtual std::string GetPluginType() const = 0;
 };
 
 } // namespace SemiconductorHMI::Plugin
+```
+
+</div>
+<div>
+
+**IWidgetPlugin (위젯 플러그인)**:
+- `RenderWidget()`: 위젯 UI 렌더링
+  - `name`: 윈도우 이름
+  - `open`: 닫기 버튼 처리
+- `GetPreferredSize()`: 기본 크기 반환
+- `IsResizable()`: 크기 조절 가능 여부
+
+**사용 예시**:
+```cpp
+class CustomGaugePlugin : public IWidgetPlugin {
+    void RenderWidget(const char* name, bool* open) {
+        ImGui::Begin(name, open);
+        // 게이지 렌더링
+        DrawCircularGauge();
+        ImGui::End();
+    }
+
+    ImVec2 GetPreferredSize() const {
+        return ImVec2(300, 300);
+    }
+};
+```
+
+**IDataSourcePlugin (데이터 소스)**:
+- `Connect()`: 데이터 소스 연결
+  - MQTT, OPC-UA, Modbus 등
+- `ReadData()`: 데이터 읽기
+- `WriteData()`: 데이터 쓰기
+- 실시간 장비 통신에 사용
+
+**IPluginFactory (팩토리)**:
+- 플러그인 인스턴스 생성
+- 타입 정보 제공
+- DLL 내보내기 함수로 사용
+
+</div>
+</div>
 ```
 
 #### 1.2 동적 플러그인 로더
@@ -238,7 +329,7 @@ private:
 } // namespace SemiconductorHMI::Plugin
 ```
 
-### 2. 고급 데이터 시각화 엔진 (15분)
+### 2. 고급 데이터 시각화 엔진
 
 #### 2.1 BigData 처리 시스템
 
@@ -527,7 +618,7 @@ private:
 } // namespace SemiconductorHMI::Visualization
 ```
 
-### 3. 멀티스레딩 및 동시성 제어 (15분)
+### 3. 멀티스레딩 및 동시성 제어
 
 #### 3.1 스레드 안전 렌더링 시스템
 
@@ -751,9 +842,9 @@ private:
 
 ---
 
-## 🛠️ 기초 실습 (45분): 플러그인 시스템 및 고급 차트 개발
+## 🛠️ 기초 실습: 플러그인 시스템 및 고급 차트 개발
 
-### 실습 1: 반도체 장비 모니터링 플러그인 개발 (20분)
+### 실습 1: 반도체 장비 모니터링 플러그인 개발
 
 #### 1.1 CVD 장비 모니터링 플러그인
 

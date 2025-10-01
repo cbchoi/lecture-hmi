@@ -298,7 +298,7 @@ PoolPtr<T> MakePooled(MemoryPool<T>& pool, Args&&... args) {
 
 ---
 
-## 💡 **실전 프로젝트 확장 (30분) - 엔터프라이즈급 HMI 시스템**
+## 💡 **실전 프로젝트 확장 - 엔터프라이즈급 HMI 시스템**
 
 ### 7. 분산 시스템 통합
 

@@ -1,4 +1,4 @@
-# 📖 이론 강의 (45분)
+# 📖 이론 강의
 
 ---
 
@@ -36,6 +36,383 @@
     </p>
 </div>
 
+</div>
+
+---
+
+## 고급 동기화 메커니즘
+
+### 🔐 Mutex vs Lock vs Semaphore
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+**Mutex (Mutual Exclusion)**:
+```csharp
+// 프로세스 간 동기화 가능
+public class EquipmentController
+{
+    private static Mutex _mutex =
+        new Mutex(false, "Global\\EquipmentMutex");
+
+    public void ControlEquipment()
+    {
+        // 다른 프로세스와 동기화
+        if (_mutex.WaitOne(5000))
+        {
+            try
+            {
+                // Critical section
+                Console.WriteLine("장비 제어 중...");
+                Thread.Sleep(2000);
+            }
+            finally
+            {
+                _mutex.ReleaseMutex();
+            }
+        }
+        else
+        {
+            Console.WriteLine("Timeout: 다른 프로세스가 사용 중");
+        }
+    }
+}
+```
+
+**사용 시나리오**:
+- 프로세스 간 동기화 필요 시
+- 시스템 전역 리소스 보호
+- 단일 인스턴스 애플리케이션
+
+</div>
+<div>
+
+**Semaphore (세마포어)**:
+```csharp
+// 동시 접근 수 제한
+public class EquipmentPool
+{
+    private static Semaphore _pool =
+        new Semaphore(3, 3); // 최대 3개 동시 접근
+
+    public async Task UseEquipmentAsync()
+    {
+        Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId}: 대기 중...");
+
+        _pool.WaitOne();
+
+        try
+        {
+            Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId}: 장비 사용 중");
+            await Task.Delay(2000);
+        }
+        finally
+        {
+            Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId}: 반납");
+            _pool.Release();
+        }
+    }
+}
+
+// 사용
+var tasks = Enumerable.Range(0, 10)
+    .Select(_ => pool.UseEquipmentAsync())
+    .ToArray();
+await Task.WhenAll(tasks);
+```
+
+**사용 시나리오**:
+- 리소스 풀 관리
+- 동시 접근 수 제한
+- Connection pool, Thread pool
+
+</div>
+</div>
+
+---
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+**ReaderWriterLockSlim**:
+```csharp
+// 읽기/쓰기 분리 잠금
+public class SensorDataCache
+{
+    private readonly Dictionary<string, double> _cache
+        = new Dictionary<string, double>();
+    private readonly ReaderWriterLockSlim _lock
+        = new ReaderWriterLockSlim();
+
+    // 여러 스레드가 동시에 읽기 가능
+    public double GetSensorValue(string sensorId)
+    {
+        _lock.EnterReadLock();
+        try
+        {
+            return _cache.ContainsKey(sensorId)
+                ? _cache[sensorId]
+                : 0.0;
+        }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
+    }
+
+    // 쓰기는 배타적
+    public void UpdateSensorValue(
+        string sensorId, double value)
+    {
+        _lock.EnterWriteLock();
+        try
+        {
+            _cache[sensorId] = value;
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    // 업그레이드 가능한 읽기 잠금
+    public void UpdateIfNeeded(
+        string sensorId, double newValue)
+    {
+        _lock.EnterUpgradeableReadLock();
+        try
+        {
+            if (!_cache.ContainsKey(sensorId) ||
+                Math.Abs(_cache[sensorId] - newValue) > 0.1)
+            {
+                _lock.EnterWriteLock();
+                try
+                {
+                    _cache[sensorId] = newValue;
+                }
+                finally
+                {
+                    _lock.ExitWriteLock();
+                }
+            }
+        }
+        finally
+        {
+            _lock.ExitUpgradeableReadLock();
+        }
+    }
+}
+```
+
+</div>
+<div>
+
+**성능 비교 및 선택 기준**:
+
+| 메커니즘 | 용도 | 성능 | 특징 |
+|---------|------|------|------|
+| **lock** | 단순 동기화 | 빠름 | 프로세스 내부 |
+| **Mutex** | 프로세스 간 | 느림 | 시스템 리소스 |
+| **Semaphore** | 카운팅 | 중간 | 리소스 풀 |
+| **ReaderWriterLock** | 읽기 많음 | 중간 | 읽기/쓰기 분리 |
+
+**선택 가이드**:
+```csharp
+// 1. 단순 보호: lock
+lock (_syncObj) { /* ... */ }
+
+// 2. 프로세스 간: Mutex
+using (var mutex = new Mutex(...))
+
+// 3. 리소스 제한: Semaphore
+_semaphore.WaitOne();
+
+// 4. 읽기가 많음: ReaderWriterLock
+_rwLock.EnterReadLock();
+```
+
+**데드락 방지 패턴**:
+```csharp
+// ❌ 데드락 발생 가능
+lock (obj1)
+{
+    lock (obj2) { /* ... */ }
+}
+
+// ✅ 항상 같은 순서로 잠금
+var locks = new[] { obj1, obj2 }
+    .OrderBy(o => o.GetHashCode());
+foreach (var obj in locks)
+{
+    lock (obj) { /* ... */ }
+}
+
+// ✅ Timeout 사용
+if (Monitor.TryEnter(obj1, TimeSpan.FromSeconds(5)))
+{
+    try
+    {
+        if (Monitor.TryEnter(obj2, TimeSpan.FromSeconds(5)))
+        {
+            try { /* ... */ }
+            finally { Monitor.Exit(obj2); }
+        }
+    }
+    finally { Monitor.Exit(obj1); }
+}
+```
+
+</div>
+</div>
+
+---
+
+## Producer-Consumer 패턴
+
+### 🔄 BlockingCollection을 사용한 구현
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+**Producer (생산자)**:
+```csharp
+public class SensorDataProducer
+{
+    private readonly BlockingCollection<SensorReading>
+        _dataQueue;
+    private readonly CancellationToken _cancellationToken;
+
+    public SensorDataProducer(
+        BlockingCollection<SensorReading> dataQueue,
+        CancellationToken cancellationToken)
+    {
+        _dataQueue = dataQueue;
+        _cancellationToken = cancellationToken;
+    }
+
+    public async Task StartAsync()
+    {
+        while (!_cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                // 센서에서 데이터 읽기
+                var reading = await ReadSensorAsync();
+
+                // 큐에 추가 (블로킹 가능)
+                _dataQueue.Add(reading,
+                    _cancellationToken);
+
+                Console.WriteLine(
+                    $"Produced: {reading.SensorId} = {reading.Value}");
+
+                await Task.Delay(100,
+                    _cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+        }
+
+        // 생산 완료 신호
+        _dataQueue.CompleteAdding();
+    }
+
+    private async Task<SensorReading> ReadSensorAsync()
+    {
+        await Task.Delay(10); // 센서 읽기 시뮬레이션
+        return new SensorReading
+        {
+            SensorId = $"SENSOR_{Random.Shared.Next(1, 5)}",
+            Value = Random.Shared.NextDouble() * 100,
+            Timestamp = DateTime.Now
+        };
+    }
+}
+```
+
+</div>
+<div>
+
+**Consumer (소비자)**:
+```csharp
+public class SensorDataConsumer
+{
+    private readonly BlockingCollection<SensorReading>
+        _dataQueue;
+    private readonly CancellationToken _cancellationToken;
+
+    public SensorDataConsumer(
+        BlockingCollection<SensorReading> dataQueue,
+        CancellationToken cancellationToken)
+    {
+        _dataQueue = dataQueue;
+        _cancellationToken = cancellationToken;
+    }
+
+    public async Task StartAsync()
+    {
+        // GetConsumingEnumerable은
+        // CompleteAdding 호출 시까지 블로킹
+        foreach (var reading in
+            _dataQueue.GetConsumingEnumerable(
+                _cancellationToken))
+        {
+            try
+            {
+                // 데이터 처리
+                await ProcessReadingAsync(reading);
+
+                Console.WriteLine(
+                    $"Consumed: {reading.SensorId} = {reading.Value}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"처리 오류: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task ProcessReadingAsync(
+        SensorReading reading)
+    {
+        // 데이터베이스 저장 시뮬레이션
+        await Task.Delay(50);
+
+        // 알람 체크
+        if (reading.Value > 80)
+        {
+            Console.WriteLine(
+                $"⚠️ 알람: {reading.SensorId} 임계값 초과!");
+        }
+    }
+}
+
+// 사용
+var queue = new BlockingCollection<SensorReading>(
+    boundedCapacity: 100); // 최대 100개
+
+var cts = new CancellationTokenSource();
+
+var producer = new SensorDataProducer(queue, cts.Token);
+var consumer1 = new SensorDataConsumer(queue, cts.Token);
+var consumer2 = new SensorDataConsumer(queue, cts.Token);
+
+await Task.WhenAll(
+    producer.StartAsync(),
+    consumer1.StartAsync(),
+    consumer2.StartAsync()
+);
+```
+
+**장점**:
+- 생산/소비 속도 차이 처리
+- 자동 동기화 (thread-safe)
+- 백프레셔 (back pressure) 지원
+- 여러 Consumer 지원
+
+</div>
 </div>
 
 ---

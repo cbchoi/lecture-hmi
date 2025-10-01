@@ -87,7 +87,7 @@ install(DIRECTORY resources/ DESTINATION share/${PROJECT_NAME}/resources)
 
 ---
 
-## 🎨 **심화 학습 (30분) - ImGUI 스타일링 및 테마 시스템**
+## 🎨 **심화 학습 - ImGUI 스타일링 및 테마 시스템**
 
 ### 5. 커스텀 스타일링 및 테마 구현
 
@@ -947,7 +947,7 @@ private:
 
 ---
 
-## 🎯 **성능 최적화 (30분) - 실시간 시스템 최적화 기법**
+## 🎯 **성능 최적화 - 실시간 시스템 최적화 기법**
 
 ### 7. ImGUI 성능 최적화 전략
 

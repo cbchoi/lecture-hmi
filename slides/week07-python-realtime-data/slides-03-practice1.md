@@ -98,7 +98,7 @@ class PrecisionDataCollector(QObject):
 
 ---
 
-## 3️⃣ 심화 실습 (45분)
+## 3️⃣ 심화 실습
 ### ⚡ **데이터베이스 연동 및 고급 통신 구현**
 
 #### **3.1 SQLite 데이터베이스 연동**

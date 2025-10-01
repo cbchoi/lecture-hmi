@@ -1,4 +1,749 @@
-# 🚀 이론 강의: PySide6 개념 및 Qt 아키텍처 (45분)
+# 🚀 이론 강의: PySide6 개념 및 Qt 아키텍처
+
+---
+
+## Python 디자인 패턴
+
+### 🎯 Context Manager Pattern
+
+**`with` 문을 통한 리소스 관리**
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```python
+# Context Manager Protocol
+class DatabaseConnection:
+    def __init__(self, db_path):
+        self.db_path = db_path
+        self.connection = None
+
+    def __enter__(self):
+        """진입 시 실행: 리소스 획득"""
+        import sqlite3
+        self.connection = sqlite3.connect(self.db_path)
+        print(f"Database {self.db_path} opened")
+        return self.connection
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """종료 시 실행: 리소스 해제"""
+        if self.connection:
+            if exc_type is None:
+                # 예외 없이 정상 종료
+                self.connection.commit()
+                print("Changes committed")
+            else:
+                # 예외 발생 시 롤백
+                self.connection.rollback()
+                print(f"Error occurred: {exc_val}")
+                print("Changes rolled back")
+
+            self.connection.close()
+            print("Database closed")
+
+        # False 반환 시 예외 전파, True 반환 시 예외 억제
+        return False
+
+# 사용
+with DatabaseConnection("equipment.db") as conn:
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO equipment (id, name, status)
+        VALUES (?, ?, ?)
+    """, ("E001", "Etcher", "Running"))
+    # with 블록 종료 시 자동으로 commit & close
+```
+
+**contextlib를 활용한 간편한 구현**:
+
+```python
+from contextlib import contextmanager
+import time
+
+@contextmanager
+def timer(operation_name):
+    """실행 시간 측정 컨텍스트"""
+    start = time.perf_counter()
+    print(f"Starting {operation_name}...")
+
+    try:
+        yield  # 여기서 with 블록 실행
+    finally:
+        elapsed = time.perf_counter() - start
+        print(f"{operation_name} completed in {elapsed:.3f}s")
+
+# 사용
+with timer("Data Processing"):
+    # 처리 작업
+    process_sensor_data()
+    calculate_statistics()
+# 자동으로 시간 측정 및 출력
+```
+
+</div>
+<div>
+
+**Context Manager의 핵심**:
+- **`__enter__()`**: with 진입 시 호출
+  - 리소스 획득 (파일 열기, DB 연결 등)
+  - 반환값이 `as` 변수로 전달
+
+- **`__exit__()`**: with 종료 시 호출
+  - 리소스 해제 (정리 작업)
+  - 예외 발생 여부와 관계없이 실행
+  - 예외 정보 수신 (exc_type, exc_val, exc_tb)
+
+**장점**:
+- 리소스 누수 방지
+- 예외 안전성 보장
+- 코드 가독성 향상
+- RAII 패턴의 Python 구현
+
+**반도체 HMI 적용**:
+
+```python
+@contextmanager
+def equipment_operation(equipment_id):
+    """장비 작업 컨텍스트"""
+    equipment = get_equipment(equipment_id)
+
+    # 시작 전 검증
+    if not equipment.is_idle():
+        raise EquipmentBusyError(equipment_id)
+
+    equipment.start()
+    equipment.log("Operation started")
+
+    try:
+        yield equipment
+    except Exception as e:
+        equipment.abort()
+        equipment.log(f"Operation aborted: {e}")
+        raise
+    finally:
+        equipment.stop()
+        equipment.log("Operation completed")
+
+# 사용
+with equipment_operation("E001") as etcher:
+    etcher.set_temperature(250)
+    etcher.process_wafer("W12345")
+    etcher.wait_until_complete()
+# 자동으로 stop() 및 로깅
+```
+
+**다중 컨텍스트**:
+```python
+# 여러 리소스 동시 관리
+with (
+    DatabaseConnection("equipment.db") as db,
+    LogFile("process.log") as log,
+    equipment_operation("E001") as etcher
+):
+    log.write("Starting process")
+    etcher.process_wafer("W001")
+    db.cursor().execute("INSERT INTO ...")
+# 모든 리소스 자동 정리 (역순)
+```
+
+**contextlib 유틸리티**:
+```python
+from contextlib import suppress, redirect_stdout
+
+# 예외 무시
+with suppress(FileNotFoundError):
+    os.remove("temp_file.txt")
+
+# 출력 리다이렉션
+with open("output.txt", "w") as f:
+    with redirect_stdout(f):
+        print("이 내용은 파일로 저장됨")
+```
+
+</div>
+</div>
+
+---
+
+### 🔧 Descriptor Pattern
+
+**속성 접근 제어 및 검증**
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```python
+# Descriptor Protocol
+class TemperatureDescriptor:
+    def __init__(self, min_value=0, max_value=300):
+        self.min_value = min_value
+        self.max_value = max_value
+        self.data = {}  # 인스턴스별 값 저장
+
+    def __set_name__(self, owner, name):
+        """Python 3.6+: descriptor 이름 자동 저장"""
+        self.name = name
+
+    def __get__(self, instance, owner):
+        """값 읽기"""
+        if instance is None:
+            return self  # 클래스에서 접근 시
+        return self.data.get(id(instance), self.min_value)
+
+    def __set__(self, instance, value):
+        """값 쓰기 (검증 포함)"""
+        if not isinstance(value, (int, float)):
+            raise TypeError(
+                f"{self.name} must be numeric, "
+                f"got {type(value).__name__}"
+            )
+
+        if not (self.min_value <= value <= self.max_value):
+            raise ValueError(
+                f"{self.name} must be between "
+                f"{self.min_value} and {self.max_value}, "
+                f"got {value}"
+            )
+
+        self.data[id(instance)] = value
+        print(f"{self.name} set to {value}")
+
+    def __delete__(self, instance):
+        """값 삭제"""
+        self.data.pop(id(instance), None)
+
+class Equipment:
+    # Descriptor 인스턴스를 클래스 변수로 선언
+    temperature = TemperatureDescriptor(0, 300)
+    pressure = TemperatureDescriptor(0, 10)
+
+    def __init__(self, equipment_id):
+        self.equipment_id = equipment_id
+        self.temperature = 25  # Descriptor를 통해 검증됨
+        self.pressure = 1.0
+
+# 사용
+etcher = Equipment("E001")
+etcher.temperature = 150  # OK
+# 출력: temperature set to 150
+
+try:
+    etcher.temperature = 350  # ValueError!
+except ValueError as e:
+    print(e)
+# 출력: temperature must be between 0 and 300, got 350
+
+try:
+    etcher.temperature = "hot"  # TypeError!
+except TypeError as e:
+    print(e)
+# 출력: temperature must be numeric, got str
+```
+
+</div>
+<div>
+
+**Descriptor Protocol**:
+- **`__get__(self, instance, owner)`**: 속성 읽기
+- **`__set__(self, instance, value)`**: 속성 쓰기
+- **`__delete__(self, instance)`**: 속성 삭제
+- **`__set_name__(self, owner, name)`**: 이름 자동 설정
+
+**장점**:
+- 재사용 가능한 검증 로직
+- DRY 원칙 준수
+- @property보다 유연함
+- 여러 속성에 동일 로직 적용
+
+**실무 활용 - Typed Descriptor**:
+
+```python
+class TypedDescriptor:
+    def __init__(self, expected_type,
+                 validator=None, default=None):
+        self.expected_type = expected_type
+        self.validator = validator
+        self.default = default
+        self.data = {}
+
+    def __set_name__(self, owner, name):
+        self.name = name
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        return self.data.get(
+            id(instance), self.default)
+
+    def __set__(self, instance, value):
+        if not isinstance(value,
+                         self.expected_type):
+            raise TypeError(
+                f"{self.name} must be "
+                f"{self.expected_type.__name__}")
+
+        if self.validator and \
+           not self.validator(value):
+            raise ValueError(
+                f"Invalid value for {self.name}: "
+                f"{value}")
+
+        self.data[id(instance)] = value
+
+class WaferProcessor:
+    # 타입 검증 + 커스텀 검증
+    wafer_id = TypedDescriptor(
+        str,
+        validator=lambda x: x.startswith("W"),
+        default=""
+    )
+
+    slot_number = TypedDescriptor(
+        int,
+        validator=lambda x: 1 <= x <= 25,
+        default=1
+    )
+
+    temperature = TypedDescriptor(
+        float,
+        validator=lambda x: 0 <= x <= 400,
+        default=25.0
+    )
+
+processor = WaferProcessor()
+processor.wafer_id = "W12345"  # OK
+processor.slot_number = 10     # OK
+processor.temperature = 250.0  # OK
+
+try:
+    processor.wafer_id = 12345  # TypeError
+except TypeError as e:
+    print(e)
+
+try:
+    processor.slot_number = 30  # ValueError
+except ValueError as e:
+    print(e)
+```
+
+**@property와 비교**:
+```python
+# @property (단일 속성)
+class Equipment:
+    def __init__(self):
+        self._temp = 0
+
+    @property
+    def temperature(self):
+        return self._temp
+
+    @temperature.setter
+    def temperature(self, value):
+        if not 0 <= value <= 300:
+            raise ValueError("Out of range")
+        self._temp = value
+
+# Descriptor (재사용 가능)
+class Equipment:
+    temperature = RangeDescriptor(0, 300)
+    pressure = RangeDescriptor(0, 10)
+    voltage = RangeDescriptor(0, 500)
+    # 검증 로직 재사용!
+```
+
+</div>
+</div>
+
+---
+
+### 🏭 Property Pattern
+
+**Pythonic한 getter/setter**
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```python
+class Equipment:
+    def __init__(self, equipment_id):
+        self.equipment_id = equipment_id
+        self._temperature = 25.0
+        self._status = "Idle"
+        self._alarm_count = 0
+
+    # Read-only property
+    @property
+    def equipment_id(self):
+        """장비 ID (읽기 전용)"""
+        return self._equipment_id
+
+    @equipment_id.setter
+    def equipment_id(self, value):
+        # 초기 설정만 허용
+        if hasattr(self, '_equipment_id'):
+            raise AttributeError(
+                "equipment_id is read-only after initialization")
+        self._equipment_id = value
+
+    # Read-write property with validation
+    @property
+    def temperature(self):
+        """온도 (℃)"""
+        return self._temperature
+
+    @temperature.setter
+    def temperature(self, value):
+        if not isinstance(value, (int, float)):
+            raise TypeError("Temperature must be numeric")
+
+        if not (0 <= value <= 300):
+            raise ValueError(
+                f"Temperature {value} out of range [0, 300]")
+
+        old_value = self._temperature
+        self._temperature = value
+
+        # 로깅
+        print(f"Temperature changed: {old_value} → {value}")
+
+        # 알람 체크
+        if value > 250:
+            self._trigger_high_temp_alarm()
+
+    @temperature.deleter
+    def temperature(self):
+        """온도 리셋"""
+        print("Resetting temperature to default")
+        self._temperature = 25.0
+
+    # Computed property (계산된 속성)
+    @property
+    def status_display(self):
+        """사용자 표시용 상태 문자열"""
+        alarm_suffix = ""
+        if self._alarm_count > 0:
+            alarm_suffix = f" ({self._alarm_count} alarms)"
+
+        return f"[{self.equipment_id}] {self._status}" + alarm_suffix
+
+    # Property with caching
+    @property
+    def is_healthy(self):
+        """장비 건강 상태 (캐시됨)"""
+        if not hasattr(self, '_health_cache'):
+            # 비용이 큰 계산
+            self._health_cache = self._calculate_health()
+        return self._health_cache
+
+    def invalidate_health_cache(self):
+        """건강 상태 캐시 무효화"""
+        if hasattr(self, '_health_cache'):
+            delattr(self, '_health_cache')
+
+    def _calculate_health(self):
+        """건강 상태 계산 (비용이 큼)"""
+        # 복잡한 계산 로직...
+        return self._alarm_count == 0 and \
+               self._temperature < 250
+```
+
+</div>
+<div>
+
+**@property 데코레이터**:
+- **getter**: `@property`
+- **setter**: `@<name>.setter`
+- **deleter**: `@<name>.deleter`
+
+**사용 패턴**:
+
+**1. Read-only (읽기 전용)**:
+```python
+class Wafer:
+    def __init__(self, wafer_id):
+        self._id = wafer_id
+        self._created_at = datetime.now()
+
+    @property
+    def wafer_id(self):
+        return self._id
+    # setter 없음 → 읽기 전용
+
+wafer = Wafer("W001")
+print(wafer.wafer_id)  # OK
+wafer.wafer_id = "W002"  # AttributeError!
+```
+
+**2. Lazy Loading (지연 로딩)**:
+```python
+class DataAnalyzer:
+    def __init__(self, data_path):
+        self.data_path = data_path
+        self._data = None  # 아직 로드 안 함
+
+    @property
+    def data(self):
+        """데이터 지연 로딩"""
+        if self._data is None:
+            print("Loading data...")
+            self._data = load_large_dataset(
+                self.data_path)
+        return self._data
+
+analyzer = DataAnalyzer("sensors.csv")
+# 여기까지는 데이터 로드 안 함
+result = analyzer.data.mean()
+# 첫 접근 시 로드
+```
+
+**3. Computed Property (계산)**:
+```python
+class Rectangle:
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+
+    @property
+    def area(self):
+        return self.width * self.height
+
+    @property
+    def perimeter(self):
+        return 2 * (self.width + self.height)
+
+rect = Rectangle(10, 5)
+print(rect.area)       # 50 (계산됨)
+print(rect.perimeter)  # 30 (계산됨)
+```
+
+**4. 변경 알림 (Change Notification)**:
+```python
+class ObservableEquipment:
+    def __init__(self):
+        self._temperature = 25
+        self.observers = []
+
+    @property
+    def temperature(self):
+        return self._temperature
+
+    @temperature.setter
+    def temperature(self, value):
+        old = self._temperature
+        self._temperature = value
+        # 모든 옵저버에게 알림
+        for observer in self.observers:
+            observer.on_temperature_changed(
+                old, value)
+```
+
+**장점**:
+- Pythonic한 캡슐화
+- 내부 구현 숨김
+- 계산 로직 추상화
+- 검증 및 로깅 중앙화
+
+</div>
+</div>
+
+---
+
+### 🎨 Decorator Pattern (함수/메서드)
+
+**함수 동작 확장**
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```python
+import functools
+import time
+from typing import Callable
+
+# 1. 기본 Decorator
+def timer(func: Callable) -> Callable:
+    """실행 시간 측정 데코레이터"""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        elapsed = time.perf_counter() - start
+        print(f"{func.__name__} took {elapsed:.3f}s")
+        return result
+    return wrapper
+
+@timer
+def process_wafer(wafer_id: str):
+    print(f"Processing {wafer_id}...")
+    time.sleep(1)
+    return f"Completed {wafer_id}"
+
+# 사용
+result = process_wafer("W001")
+# 출력:
+# Processing W001...
+# process_wafer took 1.001s
+
+# 2. 파라미터를 받는 Decorator
+def retry(max_attempts: int = 3,
+          delay: float = 1.0):
+    """재시도 데코레이터"""
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if attempt == max_attempts:
+                        raise
+                    print(f"Attempt {attempt} failed: {e}")
+                    print(f"Retrying in {delay}s...")
+                    time.sleep(delay)
+        return wrapper
+    return decorator
+
+@retry(max_attempts=3, delay=0.5)
+def unstable_sensor_read():
+    """불안정한 센서 읽기"""
+    import random
+    if random.random() < 0.7:
+        raise IOError("Sensor read failed")
+    return 125.5
+
+# 3. 클래스 Decorator
+def singleton(cls):
+    """싱글톤 패턴 구현"""
+    instances = {}
+
+    @functools.wraps(cls)
+    def get_instance(*args, **kwargs):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
+
+    return get_instance
+
+@singleton
+class DatabaseConnection:
+    def __init__(self, db_path):
+        self.db_path = db_path
+        print(f"Connected to {db_path}")
+
+# 항상 같은 인스턴스 반환
+db1 = DatabaseConnection("equipment.db")
+db2 = DatabaseConnection("equipment.db")
+print(db1 is db2)  # True
+```
+
+</div>
+<div>
+
+**Decorator 핵심**:
+- 함수/클래스를 받아 수정된 버전 반환
+- 원본 코드 변경 없이 기능 추가
+- `@` 문법으로 간편하게 적용
+- `functools.wraps`로 메타데이터 보존
+
+**반도체 HMI 적용 예시**:
+
+```python
+def log_equipment_operation(func):
+    """장비 작업 로깅"""
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        logger.info(
+            f"[{self.equipment_id}] "
+            f"Starting {func.__name__}")
+
+        try:
+            result = func(self, *args, **kwargs)
+            logger.info(
+                f"[{self.equipment_id}] "
+                f"{func.__name__} completed")
+            return result
+        except Exception as e:
+            logger.error(
+                f"[{self.equipment_id}] "
+                f"{func.__name__} failed: {e}")
+            raise
+
+    return wrapper
+
+def require_idle_state(func):
+    """Idle 상태 검증"""
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if self.status != "Idle":
+            raise EquipmentBusyError(
+                f"Equipment {self.equipment_id} "
+                f"is {self.status}")
+        return func(self, *args, **kwargs)
+    return wrapper
+
+class Equipment:
+    @log_equipment_operation
+    @require_idle_state
+    def start_process(self, recipe):
+        """공정 시작"""
+        self.status = "Running"
+        self.execute_recipe(recipe)
+        return True
+```
+
+**다중 Decorator 적용**:
+```python
+@timer
+@retry(max_attempts=3)
+@log_equipment_operation
+def critical_operation():
+    # 실행 순서 (아래에서 위로):
+    # 1. log_equipment_operation
+    # 2. retry
+    # 3. timer
+    pass
+```
+
+**functools.lru_cache (내장)**:
+```python
+from functools import lru_cache
+
+@lru_cache(maxsize=128)
+def expensive_calculation(n):
+    """비용이 큰 계산 (캐싱)"""
+    time.sleep(1)
+    return n ** 2
+
+# 첫 호출: 1초 소요
+result1 = expensive_calculation(10)
+
+# 두 번째 호출: 즉시 반환 (캐시)
+result2 = expensive_calculation(10)
+```
+
+**클래스 메서드 Decorator**:
+```python
+class Equipment:
+    @staticmethod
+    def validate_id(equipment_id: str):
+        """정적 메서드"""
+        return equipment_id.startswith("E")
+
+    @classmethod
+    def create_default(cls):
+        """클래스 메서드"""
+        return cls("E000", "Default")
+
+    @property
+    def status_code(self):
+        """프로퍼티"""
+        return self._status_code
+```
+
+</div>
+</div>
+
+---
 
 ## C# WPF vs Python PySide6 비교
 

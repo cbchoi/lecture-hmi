@@ -1,4 +1,4 @@
-# 📖 이론 강의 (45분)
+# 📖 이론 강의
 
 ---
 
@@ -27,6 +27,614 @@
 - **메모리 안정성**: 장시간 운영 시 메모리 누수 방지
 - **성능 최적화**: JIT 컴파일로 네이티브 수준 성능
 - **안전한 실행**: 타입 체크로 런타임 오류 최소화
+
+---
+
+## 소프트웨어 아키텍처 원칙
+
+### 📐 SOLID 원칙 개요
+
+**SOLID는 객체지향 설계의 5대 원칙**:
+- **S**ingle Responsibility Principle (단일 책임)
+- **O**pen/Closed Principle (개방-폐쇄)
+- **L**iskov Substitution Principle (리스코프 치환)
+- **I**nterface Segregation Principle (인터페이스 분리)
+- **D**ependency Inversion Principle (의존성 역전)
+
+> 💡 HMI 시스템에서 SOLID 원칙은 유지보수성과 확장성의 핵심
+
+---
+
+### Single Responsibility Principle
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+**❌ 나쁜 예: 여러 책임**
+```csharp
+public class EquipmentViewModel
+{
+    public void UpdateUI()
+    {
+        // UI 업데이트
+    }
+
+    public void SaveToDatabase()
+    {
+        // DB 저장
+    }
+
+    public void SendToServer()
+    {
+        // 서버 통신
+    }
+}
+```
+
+</div>
+<div>
+
+**문제점**:
+- ViewModel이 너무 많은 책임
+- UI, DB, 네트워크 로직 혼재
+- 테스트와 유지보수 어려움
+- 한 부분 변경이 전체 영향
+- 재사용성 저하
+
+**SRP 위반 시 발생하는 문제**:
+- DB 변경 시 ViewModel 수정
+- 네트워크 프로토콜 변경 시 ViewModel 수정
+- 단위 테스트 복잡도 증가
+
+</div>
+</div>
+
+---
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+**✅ 좋은 예: 책임 분리**
+```csharp
+// ViewModel은 UI 로직만
+public class EquipmentViewModel
+{
+    private readonly IEquipmentRepository _repository;
+    private readonly IDataService _dataService;
+
+    public EquipmentViewModel(
+        IEquipmentRepository repository,
+        IDataService dataService)
+    {
+        _repository = repository;
+        _dataService = dataService;
+    }
+
+    public void UpdateUI()
+    {
+        OnPropertyChanged(nameof(Status));
+    }
+
+    public async Task SaveAsync()
+    {
+        await _repository.SaveAsync(Equipment);
+    }
+}
+
+// Repository는 데이터 영속성만
+public class EquipmentRepository
+    : IEquipmentRepository
+{
+    public async Task SaveAsync(
+        Equipment equipment)
+    {
+        // DB 저장 로직
+    }
+}
+
+// Service는 통신만
+public class DataService : IDataService
+{
+    public async Task SendAsync(
+        Equipment equipment)
+    {
+        // 서버 통신 로직
+    }
+}
+```
+
+</div>
+<div>
+
+**개선점**:
+- 각 클래스가 하나의 명확한 책임
+- **ViewModel**: UI 상태 관리
+- **Repository**: 데이터 영속성
+- **DataService**: 네트워크 통신
+
+**장점**:
+- 독립적인 테스트 가능
+- 변경의 영향 범위 최소화
+- 코드 재사용성 향상
+- 유지보수 용이
+
+**실무 적용**:
+```csharp
+// 테스트가 쉬워짐
+[Test]
+public void UpdateUI_Test()
+{
+    var mockRepo = new Mock<IEquipmentRepository>();
+    var mockService = new Mock<IDataService>();
+
+    var vm = new EquipmentViewModel(
+        mockRepo.Object,
+        mockService.Object);
+
+    vm.UpdateUI();
+
+    Assert.IsTrue(vm.PropertyChanged
+        .WasRaised());
+}
+```
+
+</div>
+</div>
+
+---
+
+### Open/Closed Principle
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+**확장에는 열려있고, 수정에는 닫혀있어야 함**
+
+```csharp
+// 알람 전략 인터페이스
+public interface IAlarmStrategy
+{
+    bool ShouldTrigger(double value);
+    AlarmLevel GetLevel();
+    string GetMessage();
+}
+
+// 임계값 기반 알람
+public class ThresholdAlarm : IAlarmStrategy
+{
+    private readonly double _threshold;
+    private readonly AlarmLevel _level;
+
+    public ThresholdAlarm(
+        double threshold,
+        AlarmLevel level)
+    {
+        _threshold = threshold;
+        _level = level;
+    }
+
+    public bool ShouldTrigger(double value)
+    {
+        return value > _threshold;
+    }
+
+    public AlarmLevel GetLevel() => _level;
+
+    public string GetMessage()
+    {
+        return $"값이 {_threshold}를 초과했습니다";
+    }
+}
+```
+
+</div>
+<div>
+
+**확장 예시**:
+```csharp
+// 변화율 기반 알람 추가
+public class RateOfChangeAlarm : IAlarmStrategy
+{
+    private readonly double _maxRate;
+    private double _previousValue;
+
+    public bool ShouldTrigger(double value)
+    {
+        var rate = Math.Abs(
+            value - _previousValue);
+        _previousValue = value;
+        return rate > _maxRate;
+    }
+
+    public AlarmLevel GetLevel()
+    {
+        return AlarmLevel.Warning;
+    }
+
+    public string GetMessage()
+    {
+        return "급격한 변화가 감지되었습니다";
+    }
+}
+
+// 패턴 매칭 알람
+public class PatternAlarm : IAlarmStrategy
+{
+    private readonly Queue<double> _history;
+
+    public bool ShouldTrigger(double value)
+    {
+        _history.Enqueue(value);
+        return DetectPattern(_history);
+    }
+}
+```
+
+**장점**:
+- 기존 코드 수정 없이 새 알람 추가
+- 전략 패턴 적용
+- 런타임에 알람 전략 변경 가능
+
+</div>
+</div>
+
+---
+
+## 디자인 패턴: Observer 패턴
+
+### 🔄 Observer 패턴과 INotifyPropertyChanged
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+**Observer 패턴 구조**:
+```
+Subject (관찰 대상)
+    ↓
+    ├─→ Observer 1
+    ├─→ Observer 2
+    └─→ Observer 3
+```
+
+**핵심 개념**:
+- Subject: ViewModel
+- Observer: View
+- 상태 변경 시 자동 통지
+- 느슨한 결합 (Loose Coupling)
+
+```csharp
+// Subject 인터페이스
+public interface ISubject
+{
+    void Attach(IObserver observer);
+    void Detach(IObserver observer);
+    void Notify();
+}
+
+// Observer 인터페이스
+public interface IObserver
+{
+    void Update(ISubject subject);
+}
+```
+
+</div>
+<div>
+
+**WPF에서의 구현**:
+```csharp
+// INotifyPropertyChanged가 Subject 역할
+public class EquipmentViewModel
+    : INotifyPropertyChanged
+{
+    private string _status;
+
+    public string Status
+    {
+        get => _status;
+        set
+        {
+            if (_status != value)
+            {
+                _status = value;
+                // Observer들에게 통지
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public event PropertyChangedEventHandler
+        PropertyChanged;
+
+    protected virtual void OnPropertyChanged(
+        [CallerMemberName] string propertyName = null)
+    {
+        PropertyChanged?.Invoke(this,
+            new PropertyChangedEventArgs(propertyName));
+    }
+}
+```
+
+**이점**:
+- View가 ViewModel 상태 변경을 자동 감지
+- 코드-비하인드 최소화
+- 테스트 용이
+
+</div>
+</div>
+
+---
+
+## 디자인 패턴: Command 패턴
+
+### ⚡ Command 패턴과 ICommand
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+**Command 패턴의 이점**:
+- 요청을 객체로 캡슐화
+- 실행 취소(Undo) 가능
+- 명령 대기열 구현
+- 로깅 및 감사 추적
+
+```csharp
+public interface ICommand
+{
+    bool CanExecute(object parameter);
+    void Execute(object parameter);
+    event EventHandler CanExecuteChanged;
+}
+
+// RelayCommand 구현
+public class RelayCommand : ICommand
+{
+    private readonly Action<object> _execute;
+    private readonly Predicate<object> _canExecute;
+
+    public RelayCommand(
+        Action<object> execute,
+        Predicate<object> canExecute = null)
+    {
+        _execute = execute
+            ?? throw new ArgumentNullException(
+                nameof(execute));
+        _canExecute = canExecute;
+    }
+
+    public bool CanExecute(object parameter)
+    {
+        return _canExecute?.Invoke(parameter)
+            ?? true;
+    }
+
+    public void Execute(object parameter)
+    {
+        _execute(parameter);
+    }
+
+    public event EventHandler CanExecuteChanged
+    {
+        add => CommandManager.RequerySuggested += value;
+        remove => CommandManager.RequerySuggested -= value;
+    }
+}
+```
+
+</div>
+<div>
+
+**ViewModel에서 사용**:
+```csharp
+public class EquipmentViewModel
+{
+    private string _status = "Idle";
+
+    public ICommand StartCommand { get; }
+    public ICommand StopCommand { get; }
+
+    public EquipmentViewModel()
+    {
+        StartCommand = new RelayCommand(
+            execute: _ => Start(),
+            canExecute: _ => _status == "Idle");
+
+        StopCommand = new RelayCommand(
+            execute: _ => Stop(),
+            canExecute: _ => _status == "Running");
+    }
+
+    private void Start()
+    {
+        _status = "Running";
+        OnPropertyChanged(nameof(Status));
+        // CommandManager가 자동으로
+        // CanExecute 재평가
+    }
+
+    private void Stop()
+    {
+        _status = "Idle";
+        OnPropertyChanged(nameof(Status));
+    }
+}
+```
+
+**XAML 바인딩**:
+```xml
+<Button Content="시작"
+        Command="{Binding StartCommand}" />
+
+<Button Content="정지"
+        Command="{Binding StopCommand}" />
+```
+
+**장점**:
+- 버튼 활성화/비활성화 자동 처리
+- 코드-비하인드 불필요
+- 테스트가 쉬움
+
+</div>
+</div>
+
+---
+
+## 의존성 주입 (Dependency Injection)
+
+### 💉 DI의 필요성과 구현
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+**Without DI (강한 결합)**:
+```csharp
+public class EquipmentViewModel
+{
+    // ❌ 구체 클래스에 직접 의존
+    private DatabaseService _db
+        = new DatabaseService();
+    private NetworkService _network
+        = new NetworkService();
+
+    public void Save()
+    {
+        _db.Save(Equipment);
+        _network.Send(Equipment);
+    }
+}
+```
+
+**문제점**:
+- 테스트 어려움 (DB, 네트워크 필요)
+- 구현체 교체 불가능
+- 강한 결합으로 유연성 저하
+- Mock 객체 주입 불가
+
+</div>
+<div>
+
+**With DI (느슨한 결합)**:
+```csharp
+public class EquipmentViewModel
+{
+    // ✅ 인터페이스를 통한 의존
+    private readonly IRepository _repository;
+    private readonly IDataService _dataService;
+
+    // 생성자 주입
+    public EquipmentViewModel(
+        IRepository repository,
+        IDataService dataService)
+    {
+        _repository = repository;
+        _dataService = dataService;
+    }
+
+    public async Task SaveAsync()
+    {
+        await _repository.SaveAsync(Equipment);
+        await _dataService.SendAsync(Equipment);
+    }
+}
+
+// 사용
+var vm = new EquipmentViewModel(
+    new SqlRepository(),
+    new HttpDataService());
+
+// 테스트 시
+var vm = new EquipmentViewModel(
+    new MockRepository(),
+    new MockDataService());
+```
+
+**장점**:
+- 테스트용 Mock 주입 가능
+- 런타임에 구현체 교체
+- 느슨한 결합
+- 유연한 아키텍처
+
+</div>
+</div>
+
+---
+
+## 쓰레드 동기화 기초
+
+### 🔒 동기화의 필요성
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+**Race Condition 문제**:
+```csharp
+public class DataCollector
+{
+    private int _count = 0;
+
+    public void Collect()
+    {
+        // ❌ Thread-unsafe
+        _count++;  // Read-Modify-Write
+    }
+}
+
+// 동시 실행 시
+Task.Run(() => collector.Collect());
+Task.Run(() => collector.Collect());
+// _count가 1이 될 수 있음!
+```
+
+**문제 발생 시나리오**:
+1. Thread A가 _count 읽음 (0)
+2. Thread B가 _count 읽음 (0)
+3. Thread A가 증가 후 쓰기 (1)
+4. Thread B가 증가 후 쓰기 (1)
+5. 결과: 2가 아닌 1
+
+</div>
+<div>
+
+**lock을 사용한 동기화**:
+```csharp
+public class DataCollector
+{
+    private int _count = 0;
+    private readonly object _lock = new object();
+
+    public void Collect()
+    {
+        // ✅ Thread-safe
+        lock (_lock)
+        {
+            _count++;
+        }
+    }
+
+    public int GetCount()
+    {
+        lock (_lock)
+        {
+            return _count;
+        }
+    }
+}
+```
+
+**동기화 메커니즘**:
+- **lock**: 상호 배제 (Mutual Exclusion)
+- **Monitor**: lock의 저수준 API
+- **Mutex**: 프로세스 간 동기화
+- **Semaphore**: 리소스 개수 제한
+- **ReaderWriterLock**: 읽기/쓰기 분리
+
+**주의사항**:
+- 최소한의 critical section
+- 데드락 방지
+- 성능 고려
+
+</div>
+</div>
 
 ---
 

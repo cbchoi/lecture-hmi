@@ -306,7 +306,7 @@ secrets:
     file: ./secrets/grafana_password.txt
 ```
 
-### 2. Kubernetes 배포 (15분)
+### 2. Kubernetes 배포
 
 #### 2.1 Kubernetes 매니페스트
 
@@ -588,7 +588,7 @@ spec:
         periodSeconds: 60
 ```
 
-### 3. CI/CD 파이프라인 (15분)
+### 3. CI/CD 파이프라인
 
 #### 3.1 Jenkins 파이프라인
 
