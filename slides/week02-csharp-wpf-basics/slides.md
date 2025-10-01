@@ -105,65 +105,123 @@
     </ul>
 </div>
 
-### 💻 디펜던시 프로퍼티 구현
+### 💻 디펜던시 프로퍼티 구현 - Part 1
 
-```csharp
-// 반도체 장비 상태를 나타내는 커스텀 컨트롤
-public class EquipmentStatusControl : Control
-{
-    // 디펜던시 프로퍼티 정의
-    public static readonly DependencyProperty StatusProperty =
-        DependencyProperty.Register(
-            "Status",
-            typeof(EquipmentStatus),
-            typeof(EquipmentStatusControl),
-            new PropertyMetadata(EquipmentStatus.Idle, OnStatusChanged));
+<div class="grid grid-cols-2 gap-8">
+<div>
 
-    // CLR 프로퍼티 래퍼
-    public EquipmentStatus Status
-    {
-        get { return (EquipmentStatus)GetValue(StatusProperty); }
-        set { SetValue(StatusProperty, value); }
-    }
-
-    // 프로퍼티 변경 콜백
-    private static void OnStatusChanged(DependencyObject d,
-        DependencyPropertyChangedEventArgs e)
-    {
-        var control = (EquipmentStatusControl)d;
-        control.UpdateVisualState((EquipmentStatus)e.NewValue);
-    }
-
-    private void UpdateVisualState(EquipmentStatus newStatus)
-    {
-        // 상태에 따른 시각적 업데이트
-        switch (newStatus)
-        {
-            case EquipmentStatus.Running:
-                Background = Brushes.Green;
-                break;
-            case EquipmentStatus.Warning:
-                Background = Brushes.Orange;
-                break;
-            case EquipmentStatus.Error:
-                Background = Brushes.Red;
-                break;
-            default:
-                Background = Brushes.Gray;
-                break;
-        }
-    }
-}
-
-public enum EquipmentStatus
-{
-    Idle,      // 대기
-    Running,   // 운전 중
-    Warning,   // 경고
-    Error,     // 오류
-    Maintenance // 정비
-}
+```csharp {1-25}
+1  // 반도체 장비 상태를 나타내는 커스텀 컨트롤
+2  public class EquipmentStatusControl : Control
+3  {
+4      // 디펜던시 프로퍼티 정의
+5      public static readonly DependencyProperty StatusProperty =
+6          DependencyProperty.Register(
+7              "Status",
+8              typeof(EquipmentStatus),
+9              typeof(EquipmentStatusControl),
+10             new PropertyMetadata(EquipmentStatus.Idle, OnStatusChanged));
+11
+12     // CLR 프로퍼티 래퍼
+13     public EquipmentStatus Status
+14     {
+15         get { return (EquipmentStatus)GetValue(StatusProperty); }
+16         set { SetValue(StatusProperty, value); }
+17     }
+18
+19     // 프로퍼티 변경 콜백
+20     private static void OnStatusChanged(DependencyObject d,
+21         DependencyPropertyChangedEventArgs e)
+22     {
+23         var control = (EquipmentStatusControl)d;
+24         control.UpdateVisualState((EquipmentStatus)e.NewValue);
+25     }
 ```
+
+</div>
+<div>
+
+**디펜던시 프로퍼티 기본 구조**
+- **Line 1-2**: 반도체 장비 상태 표시용 커스텀 컨트롤 클래스
+- **Line 5-10**: 디펜던시 프로퍼티 등록
+  - **Line 7**: 프로퍼티 이름 "Status"
+  - **Line 8**: 데이터 타입 EquipmentStatus enum
+  - **Line 9**: 소유자 타입 지정
+  - **Line 10**: 기본값과 변경 콜백 설정
+
+- **Line 13-17**: CLR 프로퍼티 래퍼
+  - **Line 15**: GetValue()로 디펜던시 프로퍼티 값 읽기
+  - **Line 16**: SetValue()로 디펜던시 프로퍼티 값 설정
+
+- **Line 20-25**: 프로퍼티 변경 콜백 메서드
+  - 값 변경 시 자동으로 호출되어 UI 업데이트 수행
+
+</div>
+</div>
+
+---
+
+### 💻 디펜던시 프로퍼티 구현 - Part 2
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```csharp {26-56}
+26
+27     private void UpdateVisualState(EquipmentStatus newStatus)
+28     {
+29         // 상태에 따른 시각적 업데이트
+30         switch (newStatus)
+31         {
+32             case EquipmentStatus.Running:
+33                 Background = Brushes.Green;
+34                 break;
+35             case EquipmentStatus.Warning:
+36                 Background = Brushes.Orange;
+37                 break;
+38             case EquipmentStatus.Error:
+39                 Background = Brushes.Red;
+40                 break;
+41             default:
+42                 Background = Brushes.Gray;
+43                 break;
+44         }
+45     }
+46 }
+47
+48 public enum EquipmentStatus
+49 {
+50     Idle,      // 대기
+51     Running,   // 운전 중
+52     Warning,   // 경고
+53     Error,     // 오류
+54     Maintenance // 정비
+55 }
+56
+```
+
+</div>
+<div>
+
+**시각적 상태 업데이트 및 열거형 정의**
+- **Line 27-45**: 상태 변경에 따른 시각적 업데이트 메서드
+  - **Line 30**: switch문으로 상태별 분기 처리
+  - **Line 32-33**: 운전 중 상태 - 녹색 배경
+  - **Line 35-36**: 경고 상태 - 주황색 배경
+  - **Line 38-39**: 오류 상태 - 빨간색 배경
+  - **Line 41-42**: 기본 상태 - 회색 배경
+
+- **Line 48-55**: 장비 상태 열거형 정의
+  - **Line 50**: Idle - 대기 상태
+  - **Line 51**: Running - 정상 운전 중
+  - **Line 52**: Warning - 주의 필요 상태
+  - **Line 53**: Error - 오류 발생 상태
+  - **Line 54**: Maintenance - 정비 모드
+
+**디펜던시 프로퍼티의 장점**: 데이터 바인딩, 애니메이션, 스타일링 자동 지원
+
+</div>
+</div>
 
 </div>
 
@@ -240,104 +298,228 @@ public enum EquipmentStatus
     </ul>
 </div>
 
-### 💻 기본 ViewModel 구현
+### 💻 기본 ViewModel 구현 - Part 1
 
-```csharp
-// 기본 ViewModel 베이스 클래스
-public abstract class BaseViewModel : INotifyPropertyChanged
-{
-    public event PropertyChangedEventHandler PropertyChanged;
+<div class="grid grid-cols-2 gap-8">
+<div>
 
-    // 속성 변경 알림
-    protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-
-    // 속성 값 설정 헬퍼 메서드
-    protected bool SetProperty<T>(ref T backingField, T value, [CallerMemberName] string propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(backingField, value))
-            return false;
-
-        backingField = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
-}
-
-// 반도체 장비 ViewModel 구현
-public class EquipmentViewModel : BaseViewModel
-{
-    private string _equipmentId;
-    private EquipmentStatus _status;
-    private double _temperature;
-    private double _pressure;
-    private DateTime _lastUpdate;
-
-    public string EquipmentId
-    {
-        get => _equipmentId;
-        set => SetProperty(ref _equipmentId, value);
-    }
-
-    public EquipmentStatus Status
-    {
-        get => _status;
-        set
-        {
-            if (SetProperty(ref _status, value))
-            {
-                // 상태 변경 시 색상도 함께 업데이트
-                OnPropertyChanged(nameof(StatusColor));
-                OnPropertyChanged(nameof(StatusText));
-            }
-        }
-    }
-
-    public double Temperature
-    {
-        get => _temperature;
-        set => SetProperty(ref _temperature, value);
-    }
-
-    public double Pressure
-    {
-        get => _pressure;
-        set => SetProperty(ref _pressure, value);
-    }
-
-    public DateTime LastUpdate
-    {
-        get => _lastUpdate;
-        set => SetProperty(ref _lastUpdate, value);
-    }
-
-    // 계산된 속성들
-    public string StatusColor => Status switch
-    {
-        EquipmentStatus.Running => "#4CAF50",    // 녹색
-        EquipmentStatus.Warning => "#FF9800",    // 주황색
-        EquipmentStatus.Error => "#F44336",      // 빨간색
-        EquipmentStatus.Maintenance => "#2196F3", // 파란색
-        _ => "#9E9E9E"                           // 회색
-    };
-
-    public string StatusText => Status switch
-    {
-        EquipmentStatus.Idle => "대기",
-        EquipmentStatus.Running => "운전 중",
-        EquipmentStatus.Warning => "경고",
-        EquipmentStatus.Error => "오류",
-        EquipmentStatus.Maintenance => "정비 중",
-        _ => "알 수 없음"
-    };
-
-    public string TemperatureText => $"{Temperature:F1}°C";
-    public string PressureText => $"{Pressure:F3} Torr";
-    public string LastUpdateText => LastUpdate.ToString("yyyy-MM-dd HH:mm:ss");
-}
+```csharp {1-25}
+1  // 기본 ViewModel 베이스 클래스
+2  public abstract class BaseViewModel : INotifyPropertyChanged
+3  {
+4      public event PropertyChangedEventHandler PropertyChanged;
+5
+6      // 속성 변경 알림
+7      protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+8      {
+9          PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+10     }
+11
+12     // 속성 값 설정 헬퍼 메서드
+13     protected bool SetProperty<T>(ref T backingField, T value, [CallerMemberName] string propertyName = null)
+14     {
+15         if (EqualityComparer<T>.Default.Equals(backingField, value))
+16             return false;
+17
+18         backingField = value;
+19         OnPropertyChanged(propertyName);
+20         return true;
+21     }
+22 }
+23
+24 // 반도체 장비 ViewModel 구현
+25 public class EquipmentViewModel : BaseViewModel
 ```
+
+</div>
+<div>
+
+**BaseViewModel 기본 구조**
+- **Line 1-2**: INotifyPropertyChanged를 구현하는 추상 베이스 클래스
+- **Line 4**: PropertyChanged 이벤트 선언
+- **Line 7-10**: 속성 변경 알림 메서드
+  - **[CallerMemberName]**: 호출한 속성 이름을 자동으로 가져옴
+  - **Line 9**: null 조건부 연산자로 안전한 이벤트 호출
+
+- **Line 13-21**: 제네릭 속성 설정 헬퍼 메서드
+  - **Line 15-16**: 값이 동일하면 변경하지 않아 성능 최적화
+  - **Line 18-20**: 백킹 필드 업데이트 후 알림 발생
+
+- **Line 24-25**: 반도체 장비 전용 ViewModel 클래스 시작
+  - BaseViewModel을 상속하여 기본 기능 확보
+
+</div>
+</div>
+
+---
+
+### 💻 기본 ViewModel 구현 - Part 2
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```csharp {26-50}
+26 {
+27     private string _equipmentId;
+28     private EquipmentStatus _status;
+29     private double _temperature;
+30     private double _pressure;
+31     private DateTime _lastUpdate;
+32
+33     public string EquipmentId
+34     {
+35         get => _equipmentId;
+36         set => SetProperty(ref _equipmentId, value);
+37     }
+38
+39     public EquipmentStatus Status
+40     {
+41         get => _status;
+42         set
+43         {
+44             if (SetProperty(ref _status, value))
+45             {
+46                 // 상태 변경 시 색상도 함께 업데이트
+47                 OnPropertyChanged(nameof(StatusColor));
+48                 OnPropertyChanged(nameof(StatusText));
+49             }
+50         }
+```
+
+</div>
+<div>
+
+**필드 및 기본 속성 정의**
+- **Line 27-31**: private 백킹 필드 선언
+  - **equipmentId**: 장비 고유 식별자
+  - **status**: 현재 장비 상태
+  - **temperature**: 온도 센서 값
+  - **pressure**: 압력 센서 값
+  - **lastUpdate**: 마지막 업데이트 시간
+
+- **Line 33-37**: 장비 ID 속성
+  - get/set 표현식 구문으로 간결한 구현
+  - SetProperty 헬퍼 사용으로 자동 알림
+
+- **Line 39-50**: 상태 속성 (복합 알림)
+  - **Line 44**: SetProperty가 true 반환시 (값이 실제 변경됨)
+  - **Line 47-48**: 관련 계산 속성들도 함께 알림
+  - **nameof**: 컴파일 타임 문자열 안전성 확보
+
+</div>
+</div>
+
+---
+
+### 💻 기본 ViewModel 구현 - Part 3
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```csharp {51-75}
+51     }
+52
+53     public double Temperature
+54     {
+55         get => _temperature;
+56         set => SetProperty(ref _temperature, value);
+57     }
+58
+59     public double Pressure
+60     {
+61         get => _pressure;
+62         set => SetProperty(ref _pressure, value);
+63     }
+64
+65     public DateTime LastUpdate
+66     {
+67         get => _lastUpdate;
+68         set => SetProperty(ref _lastUpdate, value);
+69     }
+70
+71     // 계산된 속성들
+72     public string StatusColor => Status switch
+73     {
+74         EquipmentStatus.Running => "#4CAF50",    // 녹색
+75         EquipmentStatus.Warning => "#FF9800",    // 주황색
+```
+
+</div>
+<div>
+
+**센서 데이터 속성 및 계산 속성 시작**
+- **Line 53-57**: 온도 속성
+  - double 타입으로 정밀한 온도 값 관리
+  - 센서에서 실시간으로 업데이트되는 값
+
+- **Line 59-63**: 압력 속성
+  - 반도체 공정에서 중요한 진공 압력 모니터링
+  - Torr 단위로 측정되는 정밀 압력 값
+
+- **Line 65-69**: 마지막 업데이트 시간
+  - 데이터 신선도 확인용
+  - 통신 상태 모니터링 지표
+
+- **Line 72-75**: 상태별 색상 계산 속성
+  - **switch 식**: C# 8.0의 간결한 패턴 매칭
+  - **Line 74**: Running 상태 - 녹색 (#4CAF50)
+  - **Line 75**: Warning 상태 - 주황색 (#FF9800)
+
+</div>
+</div>
+
+---
+
+### 💻 기본 ViewModel 구현 - Part 4
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```csharp {76-95}
+76         EquipmentStatus.Error => "#F44336",      // 빨간색
+77         EquipmentStatus.Maintenance => "#2196F3", // 파란색
+78         _ => "#9E9E9E"                           // 회색
+79     };
+80
+81     public string StatusText => Status switch
+82     {
+83         EquipmentStatus.Idle => "대기",
+84         EquipmentStatus.Running => "운전 중",
+85         EquipmentStatus.Warning => "경고",
+86         EquipmentStatus.Error => "오류",
+87         EquipmentStatus.Maintenance => "정비 중",
+88         _ => "알 수 없음"
+89     };
+90
+91     public string TemperatureText => $"{Temperature:F1}°C";
+92     public string PressureText => $"{Pressure:F3} Torr";
+93     public string LastUpdateText => LastUpdate.ToString("yyyy-MM-dd HH:mm:ss");
+94 }
+95
+```
+
+</div>
+<div>
+
+**계산 속성 완성 및 포맷팅**
+- **Line 76-79**: 상태 색상 매핑 완료
+  - **Line 76**: Error 상태 - 빨간색 (#F44336)
+  - **Line 77**: Maintenance 상태 - 파란색 (#2196F3)
+  - **Line 78**: 기본값 - 회색 (#9E9E9E)
+
+- **Line 81-89**: 상태 텍스트 한글 표시
+  - 사용자 친화적 한글 메시지
+  - 각 상태별 명확한 의미 전달
+
+- **Line 91-93**: 데이터 포맷팅 속성
+  - **Line 91**: 온도 - 소수점 1자리 + 단위
+  - **Line 92**: 압력 - 소수점 3자리 정밀도 + Torr 단위
+  - **Line 93**: 시간 - 표준 datetime 포맷
+
+**MVVM 패턴의 핵심**: View에서 직접 사용 가능한 형태로 데이터 가공
+
+</div>
+</div>
 
 </div>
 
@@ -668,159 +850,378 @@ public class RelayCommand<T> : ICommand
 
 ### 📊 MainWindow.xaml.cs 코드-비하인드
 
-```csharp
-using System.Windows;
+<div class="grid grid-cols-2 gap-8">
+<div>
 
-namespace SemiconductorHMI
-{
-    public partial class MainWindow : Window
-    {
-        public MainWindow()
-        {
-            InitializeComponent();
-
-            // ViewModel 설정
-            DataContext = new MainWindowViewModel();
-        }
-    }
-}
+```csharp {1-17}
+1  using System.Windows;
+2
+3  namespace SemiconductorHMI
+4  {
+5      public partial class MainWindow : Window
+6      {
+7          public MainWindow()
+8          {
+9              InitializeComponent();
+10
+11             // ViewModel 설정
+12             DataContext = new MainWindowViewModel();
+13         }
+14     }
+15 }
+16
+17
 ```
 
-### 🎯 MainWindowViewModel 구현
+</div>
+<div>
 
-```csharp
-using System;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using System.Windows.Threading;
+**코드-비하인드 기본 구조**
+- **Line 1**: System.Windows 네임스페이스 사용
+- **Line 3**: SemiconductorHMI 네임스페이스 정의
+- **Line 5**: MainWindow가 Window 클래스 상속
+- **Line 7-13**: 생성자 메서드
+  - **Line 9**: InitializeComponent() - XAML 초기화
+  - **Line 12**: DataContext 설정으로 MVVM 바인딩 활성화
 
-namespace SemiconductorHMI
-{
-    public class MainWindowViewModel : BaseViewModel
-    {
-        private EquipmentViewModel _selectedEquipment;
-        private string _currentTime;
-        private int _alarmCount;
-        private string _statusMessage;
-        private DispatcherTimer _clockTimer;
+**MVVM 패턴 핵심**:
+- View(XAML)와 ViewModel 연결점
+- 최소한의 코드-비하인드로 관심사 분리
+- DataContext를 통한 자동 데이터 바인딩
 
-        public ObservableCollection<EquipmentViewModel> EquipmentList { get; }
+</div>
+</div>
 
-        public EquipmentViewModel SelectedEquipment
-        {
-            get => _selectedEquipment;
-            set => SetProperty(ref _selectedEquipment, value);
-        }
+---
 
-        public string CurrentTime
-        {
-            get => _currentTime;
-            set => SetProperty(ref _currentTime, value);
-        }
+### 🎯 MainWindowViewModel 구현 - Part 1
 
-        public int AlarmCount
-        {
-            get => _alarmCount;
-            set => SetProperty(ref _alarmCount, value);
-        }
+<div class="grid grid-cols-2 gap-8">
+<div>
 
-        public string StatusMessage
-        {
-            get => _statusMessage;
-            set => SetProperty(ref _statusMessage, value);
-        }
-
-        public MainWindowViewModel()
-        {
-            EquipmentList = new ObservableCollection<EquipmentViewModel>();
-            InitializeEquipmentData();
-            InitializeClock();
-
-            // 첫 번째 장비를 기본 선택
-            if (EquipmentList.Count > 0)
-                SelectedEquipment = EquipmentList[0];
-
-            StatusMessage = "시스템 초기화 완료";
-        }
-
-        private void InitializeEquipmentData()
-        {
-            // 샘플 반도체 장비 데이터 생성
-            EquipmentList.Add(new EquipmentViewModel
-            {
-                EquipmentId = "CVD-001",
-                Status = EquipmentStatus.Running,
-                Temperature = 250.5,
-                Pressure = 0.850,
-                LastUpdate = DateTime.Now
-            });
-
-            EquipmentList.Add(new EquipmentViewModel
-            {
-                EquipmentId = "PVD-002",
-                Status = EquipmentStatus.Warning,
-                Temperature = 185.2,
-                Pressure = 1.250,
-                LastUpdate = DateTime.Now.AddMinutes(-2)
-            });
-
-            EquipmentList.Add(new EquipmentViewModel
-            {
-                EquipmentId = "ETCH-003",
-                Status = EquipmentStatus.Idle,
-                Temperature = 25.0,
-                Pressure = 0.001,
-                LastUpdate = DateTime.Now.AddMinutes(-15)
-            });
-
-            EquipmentList.Add(new EquipmentViewModel
-            {
-                EquipmentId = "CMP-004",
-                Status = EquipmentStatus.Error,
-                Temperature = 95.8,
-                Pressure = 0.750,
-                LastUpdate = DateTime.Now.AddMinutes(-5)
-            });
-
-            // 알람 개수 계산
-            UpdateAlarmCount();
-        }
-
-        private void InitializeClock()
-        {
-            // 1초마다 시간 업데이트
-            _clockTimer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromSeconds(1)
-            };
-            _clockTimer.Tick += (s, e) => UpdateCurrentTime();
-            _clockTimer.Start();
-
-            UpdateCurrentTime();
-        }
-
-        private void UpdateCurrentTime()
-        {
-            CurrentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-        }
-
-        private void UpdateAlarmCount()
-        {
-            int count = 0;
-            foreach (var equipment in EquipmentList)
-            {
-                if (equipment.Status == EquipmentStatus.Warning ||
-                    equipment.Status == EquipmentStatus.Error)
-                {
-                    count++;
-                }
-            }
-            AlarmCount = count;
-        }
-    }
-}
+```csharp {18-42}
+18 using System;
+19 using System.Collections.ObjectModel;
+20 using System.ComponentModel;
+21 using System.Runtime.CompilerServices;
+22 using System.Windows.Threading;
+23
+24 namespace SemiconductorHMI
+25 {
+26     public class MainWindowViewModel : BaseViewModel
+27     {
+28         private EquipmentViewModel _selectedEquipment;
+29         private string _currentTime;
+30         private int _alarmCount;
+31         private string _statusMessage;
+32         private DispatcherTimer _clockTimer;
+33
+34         public ObservableCollection<EquipmentViewModel> EquipmentList { get; }
+35
+36         public EquipmentViewModel SelectedEquipment
+37         {
+38             get => _selectedEquipment;
+39             set => SetProperty(ref _selectedEquipment, value);
+40         }
+41
+42         public string CurrentTime
 ```
+
+</div>
+<div>
+
+**ViewModel 클래스 기본 구조**
+- **Line 18-22**: 필요한 네임스페이스 import
+  - ObservableCollection: 컬렉션 바인딩용
+  - DispatcherTimer: UI 스레드 타이머
+- **Line 26**: BaseViewModel 상속으로 INotifyPropertyChanged 구현
+
+- **Line 28-32**: private 백킹 필드들
+  - **selectedEquipment**: 현재 선택된 장비
+  - **currentTime**: 실시간 시계 표시
+  - **alarmCount**: 알람 발생 개수
+  - **statusMessage**: 상태 메시지
+  - **clockTimer**: 시계 업데이트용 타이머
+
+- **Line 34**: ObservableCollection으로 UI 자동 업데이트
+- **Line 36-40**: 선택된 장비 속성 (읽기전용 프로퍼티 사용)
+
+</div>
+</div>
+
+---
+
+### 🎯 MainWindowViewModel 구현 - Part 2
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```csharp {43-67}
+43         {
+44             get => _currentTime;
+45             set => SetProperty(ref _currentTime, value);
+46         }
+47
+48         public int AlarmCount
+49         {
+50             get => _alarmCount;
+51             set => SetProperty(ref _alarmCount, value);
+52         }
+53
+54         public string StatusMessage
+55         {
+56             get => _statusMessage;
+57             set => SetProperty(ref _statusMessage, value);
+58         }
+59
+60         public MainWindowViewModel()
+61         {
+62             EquipmentList = new ObservableCollection<EquipmentViewModel>();
+63             InitializeEquipmentData();
+64             InitializeClock();
+65
+66             // 첫 번째 장비를 기본 선택
+67             if (EquipmentList.Count > 0)
+```
+
+</div>
+<div>
+
+**속성 정의 및 생성자**
+- **Line 43-46**: CurrentTime 속성
+  - 실시간 시계 표시용
+  - UI에서 바인딩하여 자동 업데이트
+
+- **Line 48-52**: AlarmCount 속성
+  - Warning/Error 상태 장비 개수
+  - 헤더 영역 알람 표시용
+
+- **Line 54-58**: StatusMessage 속성
+  - 시스템 상태 메시지
+  - 사용자에게 현재 상태 안내
+
+- **Line 60-67**: 생성자 메서드 시작
+  - **Line 62**: ObservableCollection 초기화
+  - **Line 63**: 샘플 장비 데이터 생성
+  - **Line 64**: 실시간 시계 초기화
+  - **Line 67**: 첫 번째 장비를 기본 선택
+
+</div>
+</div>
+
+---
+
+### 🎯 MainWindowViewModel 구현 - Part 3
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```csharp {68-92}
+68                 SelectedEquipment = EquipmentList[0];
+69
+70             StatusMessage = "시스템 초기화 완료";
+71         }
+72
+73         private void InitializeEquipmentData()
+74         {
+75             // 샘플 반도체 장비 데이터 생성
+76             EquipmentList.Add(new EquipmentViewModel
+77             {
+78                 EquipmentId = "CVD-001",
+79                 Status = EquipmentStatus.Running,
+80                 Temperature = 250.5,
+81                 Pressure = 0.850,
+82                 LastUpdate = DateTime.Now
+83             });
+84
+85             EquipmentList.Add(new EquipmentViewModel
+86             {
+87                 EquipmentId = "PVD-002",
+88                 Status = EquipmentStatus.Warning,
+89                 Temperature = 185.2,
+90                 Pressure = 1.250,
+91                 LastUpdate = DateTime.Now.AddMinutes(-2)
+92             });
+```
+
+</div>
+<div>
+
+**샘플 데이터 초기화 - Part 1**
+- **Line 68**: 첫 번째 장비를 기본 선택으로 설정
+- **Line 70**: 초기화 완료 메시지 설정
+
+- **Line 73-83**: CVD-001 장비 데이터
+  - **CVD**: Chemical Vapor Deposition (화학기상증착)
+  - **Line 79**: Running 상태 - 정상 운전 중
+  - **Line 80**: 250.5°C - 일반적인 CVD 공정 온도
+  - **Line 81**: 0.850 Torr - 공정 압력
+
+- **Line 85-92**: PVD-002 장비 데이터
+  - **PVD**: Physical Vapor Deposition (물리기상증착)
+  - **Line 88**: Warning 상태 - 주의 필요
+  - **Line 90**: 1.250 Torr - 경고 상태 압력
+  - **Line 91**: 2분 전 업데이트 - 통신 지연 시뮬레이션
+
+</div>
+</div>
+
+---
+
+### 🎯 MainWindowViewModel 구현 - Part 4
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```csharp {93-117}
+93
+94             EquipmentList.Add(new EquipmentViewModel
+95             {
+96                 EquipmentId = "ETCH-003",
+97                 Status = EquipmentStatus.Idle,
+98                 Temperature = 25.0,
+99                 Pressure = 0.001,
+100                LastUpdate = DateTime.Now.AddMinutes(-15)
+101            });
+102
+103            EquipmentList.Add(new EquipmentViewModel
+104            {
+105                EquipmentId = "CMP-004",
+106                Status = EquipmentStatus.Error,
+107                Temperature = 95.8,
+108                Pressure = 0.750,
+109                LastUpdate = DateTime.Now.AddMinutes(-5)
+110            });
+111
+112            // 알람 개수 계산
+113            UpdateAlarmCount();
+114        }
+115
+116        private void InitializeClock()
+117        {
+```
+
+</div>
+<div>
+
+**샘플 데이터 초기화 - Part 2**
+- **Line 94-101**: ETCH-003 장비 데이터
+  - **ETCH**: 식각 공정 장비
+  - **Line 97**: Idle 상태 - 대기 중
+  - **Line 98**: 25.0°C - 상온 상태
+  - **Line 99**: 0.001 Torr - 고진공 상태
+  - **Line 100**: 15분 전 업데이트 - 오프라인 상태
+
+- **Line 103-110**: CMP-004 장비 데이터
+  - **CMP**: Chemical Mechanical Planarization (화학기계평탄화)
+  - **Line 106**: Error 상태 - 오류 발생
+  - **Line 107**: 95.8°C - 비정상 온도
+  - **Line 109**: 5분 전 업데이트
+
+- **Line 113**: 알람 개수 계산 메서드 호출
+- **Line 116**: 실시간 시계 초기화 메서드 시작
+
+</div>
+</div>
+
+---
+
+### 🎯 MainWindowViewModel 구현 - Part 5
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```csharp {118-142}
+118            // 1초마다 시간 업데이트
+119            _clockTimer = new DispatcherTimer
+120            {
+121                Interval = TimeSpan.FromSeconds(1)
+122            };
+123            _clockTimer.Tick += (s, e) => UpdateCurrentTime();
+124            _clockTimer.Start();
+125
+126            UpdateCurrentTime();
+127        }
+128
+129        private void UpdateCurrentTime()
+130        {
+131            CurrentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+132        }
+133
+134        private void UpdateAlarmCount()
+135        {
+136            int count = 0;
+137            foreach (var equipment in EquipmentList)
+138            {
+139                if (equipment.Status == EquipmentStatus.Warning ||
+140                    equipment.Status == EquipmentStatus.Error)
+141                {
+142                    count++;
+```
+
+</div>
+<div>
+
+**타이머 및 업데이트 메서드**
+- **Line 119-122**: DispatcherTimer 설정
+  - **Line 121**: 1초 간격으로 설정
+  - UI 스레드에서 안전한 타이머 사용
+
+- **Line 123**: 람다식으로 이벤트 핸들러 등록
+  - 간결한 문법으로 콜백 설정
+- **Line 124**: 타이머 시작
+- **Line 126**: 즉시 시간 업데이트
+
+- **Line 129-132**: 현재 시간 업데이트 메서드
+  - **Line 131**: 표준 날짜/시간 포맷 사용
+
+- **Line 134-142**: 알람 개수 계산 메서드
+  - **Line 137**: 전체 장비 리스트 순회
+  - **Line 139-140**: Warning 또는 Error 상태 체크
+  - **Line 142**: 카운터 증가
+
+</div>
+</div>
+
+---
+
+### 🎯 MainWindowViewModel 구현 - Part 6
+
+<div class="grid grid-cols-2 gap-8">
+<div>
+
+```csharp {143-152}
+143                }
+144            }
+145            AlarmCount = count;
+146        }
+147    }
+148 }
+149
+150
+151
+152
+```
+
+</div>
+<div>
+
+**메서드 완료 및 클래스 종료**
+- **Line 145**: 계산된 알람 개수를 속성에 설정
+  - SetProperty 호출로 UI 자동 업데이트
+- **Line 146-148**: 메서드 및 클래스 종료
+
+**MainWindowViewModel의 핵심 기능**:
+1. **실시간 데이터 바인딩**: ObservableCollection 사용
+2. **자동 UI 업데이트**: INotifyPropertyChanged 구현
+3. **타이머 기반 갱신**: DispatcherTimer로 시계 업데이트
+4. **알람 모니터링**: 상태 기반 알람 개수 계산
+5. **샘플 데이터**: 4가지 반도체 장비 시뮬레이션
+
+**MVVM 패턴 완성**: View는 ViewModel과 바인딩만으로 동작
+
+</div>
+</div>
 
 </div>
 

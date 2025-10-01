@@ -420,8 +420,7 @@ $">
                         breaks: true
                     },
                     highlight: {
-                        highlightOnLoad: true,
-                        lineNumbers: true
+                        highlightOnLoad: true
                     },
                     plugins: [Markdown, Highlight, Notes, Search, Zoom]
                 });
@@ -490,29 +489,6 @@ Please go back to select a week.`;
                     throw new Error(`Week ${week} not found`);
                 }
 
-                // Try to load slides.json first for multi-file support
-                try {
-                    const jsonResponse = await fetch(`/slides/${folderName}/slides.json`);
-                    if (jsonResponse.ok) {
-                        const slidesConfig = await jsonResponse.json();
-                        // Load all slide files and concatenate them
-                        const slideContents = await Promise.all(
-                            slidesConfig.files.map(async (file) => {
-                                const fileResponse = await fetch(`/slides/${folderName}/${file}`);
-                                if (!fileResponse.ok) {
-                                    throw new Error(`Slide file ${file} not found`);
-                                }
-                                return await fileResponse.text();
-                            })
-                        );
-                        // Join all slide contents with a separator
-                        return slideContents.join('\n\n---\n\n');
-                    }
-                } catch (jsonError) {
-                    console.log(`No slides.json found for ${folderName}, falling back to slides.md`);
-                }
-
-                // Fallback to single slides.md file
                 const response = await fetch(`/slides/${folderName}/slides.md`);
                 if (!response.ok) {
                     throw new Error(`Week ${week} slides not found`);
