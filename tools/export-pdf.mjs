@@ -30,7 +30,12 @@ async function exportWeekToPDF(week, outputDir, serverPort, width = 1920, height
       '--disable-setuid-sandbox',
       '--font-render-hinting=none',
       '--disable-font-subpixel-positioning',
-      '--disable-features=VizDisplayCompositor'
+      '--disable-features=VizDisplayCompositor',
+      '--disable-audio-output',
+      '--disable-dev-shm-usage',
+      '--no-first-run',
+      '--no-zygote',
+      '--disable-software-rasterizer'
     ]
   });
 
