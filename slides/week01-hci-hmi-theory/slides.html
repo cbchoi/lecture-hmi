@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <title>Week 1: HCI/HMI 이론 및 반도체 장비 적용 - HCI/HMI 강의</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/theme/white.css" id="theme">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/highlight/monokai.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js-plugins@latest/chalkboard/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js-plugins@latest/customcontrols/style.css">
+    <link rel="stylesheet" href="/css/custom_theme.css">
+
+    <style>
+        /* Mermaid 노드 레이블 수직 중앙 정렬 */
+        .flowchart-label text {
+            dominant-baseline: middle !important;
+        }
+    </style>
+</head>
+
+<body class="theme-custom">
+    <!-- Navigation buttons -->
+    <div style="position: fixed; top: 10px; left: 10px; z-index: 100;">
+        <a href="/hmi/modules.html"
+           style="display: inline-block; padding: 8px 16px; background: rgba(42, 85, 153, 0.9); color: white;
+                  text-decoration: none; border-radius: 5px; font-size: 14px; font-weight: 600;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.3s ease;">
+            ← Modules
+        </a>
+        <a href="/index.html"
+           style="display: inline-block; padding: 8px 16px; background: rgba(100, 100, 100, 0.9); color: white;
+                  text-decoration: none; border-radius: 5px; font-size: 14px; font-weight: 600;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.2); margin-left: 5px; transition: all 0.3s ease;">
+            ⌂ Home
+        </a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <section data-markdown="slides-01-intro.md"
+                     data-separator="^\n---\n$"
+                     data-separator-vertical="^\n--\n$"
+                     data-separator-notes="^Note:"
+                     data-charset="utf-8">
+            </section>
+            <section data-markdown="slides-02-standards-references.md"
+                     data-separator="^\n---\n$"
+                     data-separator-vertical="^\n--\n$"
+                     data-separator-notes="^Note:"
+                     data-charset="utf-8">
+            </section>
+            <section data-markdown="slides-03-practice1.md"
+                     data-separator="^\n---\n$"
+                     data-separator-vertical="^\n--\n$"
+                     data-separator-notes="^Note:"
+                     data-charset="utf-8">
+            </section>
+            <section data-markdown="slides-04-practice2.md"
+                     data-separator="^\n---\n$"
+                     data-separator-vertical="^\n--\n$"
+                     data-separator-notes="^Note:"
+                     data-charset="utf-8">
+            </section>
+            <section data-markdown="slides-05-practice3.md"
+                     data-separator="^\n---\n$"
+                     data-separator-vertical="^\n--\n$"
+                     data-separator-notes="^Note:"
+                     data-charset="utf-8">
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/markdown/markdown.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/highlight/highlight.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/notes/notes.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/zoom/zoom.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/math/math.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js-plugins@latest/chalkboard/plugin.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js-plugins@latest/customcontrols/plugin.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11.12.0/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js-mermaid-plugin@11.6.0/plugin/mermaid/mermaid.js"></script>
+
+    <script>
+        Reveal.initialize({
+            hash: true,
+            center: false,
+            slideNumber: 'c/t',
+            showSlideNumber: 'all',
+            transition: 'slide',
+            width: 1280,
+            height: 720,
+            margin: 0.04,
+
+            plugins: [
+                RevealMarkdown,
+                RevealHighlight,
+                RevealNotes,
+                RevealZoom,
+                RevealMath.KaTeX,
+                RevealChalkboard,
+                RevealCustomControls,
+                RevealMermaid
+            ],
+
+            // Chalkboard plugin configuration
+            chalkboard: {
+                boardmarkerWidth: 3,
+                chalkWidth: 4,
+                chalkEffect: 0.5,
+                storage: null,
+                src: null,
+                readOnly: false,
+                toggleChalkboardButton: { left: '30px', bottom: '30px', top: 'auto', right: 'auto' },
+                toggleNotesButton: { left: '80px', bottom: '30px', top: 'auto', right: 'auto' },
+                colorButtons: true,
+                boardHandle: true,
+                transition: 800,
+                theme: 'whiteboard'
+            },
+
+            // Custom controls configuration
+            customcontrols: {
+                controls: [
+                    {
+                        icon: '<i class="fa fa-pen-square"></i>',
+                        title: 'Toggle chalkboard (B)',
+                        action: 'RevealChalkboard.toggleChalkboard();'
+                    },
+                    {
+                        icon: '<i class="fa fa-pen"></i>',
+                        title: 'Toggle notes canvas (C)',
+                        action: 'RevealChalkboard.toggleNotesCanvas();'
+                    }
+                ]
+            },
+
+            markdown: {
+                smartypants: true
+            },
+
+            keyboard: {
+                // Home key - go to modules selector
+                36: function() {
+                    window.location.href = '/hmi/modules.html';
+                },
+                // Backspace - go back to modules selector (disabled when chalkboard is active)
+                8: function() {
+                    if (!document.querySelector('.reveal').classList.contains('has-chalkboard')) {
+                        window.location.href = '/hmi/modules.html';
+                    }
+                },
+                // B key - toggle chalkboard
+                66: function() {
+                    RevealChalkboard.toggleChalkboard();
+                },
+                // C key - toggle notes canvas
+                67: function() {
+                    RevealChalkboard.toggleNotesCanvas();
+                },
+                // D key - download drawings
+                68: function() {
+                    RevealChalkboard.download();
+                },
+                // DELETE key - clear canvas
+                46: function() {
+                    RevealChalkboard.clear();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
